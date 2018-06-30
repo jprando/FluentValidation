@@ -83,6 +83,11 @@ namespace FluentValidation {
 		IValidatorSelector Selector { get; }
 
 		/// <summary>
+		/// Whether the current validation run is asynchronous.
+		/// </summary>
+		bool IsAsync { get; }
+
+		/// <summary>
 		/// Adss a new validation failure
 		/// </summary>
 		/// <param name="failure">The failure to add</param>
@@ -144,6 +149,18 @@ namespace FluentValidation {
 		/// Selector
 		/// </summary>
 		public IValidatorSelector Selector { get; private set; }
+
+		/// <summary>
+		/// Whether the current validation run is asynchronous.
+		/// </summary>
+		public bool IsAsync {
+			get {
+				if (RootContextData.ContainsKey("__FV_IsAsyncExecution")) {
+					return (RootContextData["__FV_IsAsyncExecution"] as bool?).GetValueOrDefault();
+				}
+				return false;
+			}
+		}
 
 		/// <summary>
 		/// Whether this is a child context

@@ -53,7 +53,7 @@
 		}
 
 		public bool ShouldValidateAsync(ValidationContext context) {
-			return _isAsync && context.IsAsync();
+			return _isAsync && context.IsAsync;
 		}
 	}
 }
