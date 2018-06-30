@@ -11,8 +11,8 @@
 	/// </summary>
 	/// <typeparam name="T"></typeparam>
 	public class CustomValidator<T> : PropertyValidator, IShouldValidateAsync {
-		private readonly Action<T, CustomContext> _action;
-		private Func<T, CustomContext, CancellationToken, Task> _asyncAction;
+		private readonly Action<T, IValidationContext> _action;
+		private Func<T, IValidationContext, CancellationToken, Task> _asyncAction;
 		private readonly bool _isAsync;
 
 		[Obsolete]
@@ -22,7 +22,7 @@
 		/// Creates a new instance of the CustomValidator
 		/// </summary>
 		/// <param name="action"></param>
-		public CustomValidator(Action<T, CustomContext> action) : base(string.Empty) {
+		public CustomValidator(Action<T, IValidationContext> action) : base(string.Empty) {
 			_isAsync = false;
 			_action = action;
 			_asyncAction = (x, ctx, cancel) => TaskHelpers.RunSynchronously(() =>_action(x, ctx), cancel);
@@ -32,22 +32,20 @@
 		/// Creates a new isntance of the CutomValidator.
 		/// </summary>
 		/// <param name="asyncAction"></param>
-		public CustomValidator(Func<T, CustomContext, CancellationToken, Task> asyncAction) : base(string.Empty) {
+		public CustomValidator(Func<T, IValidationContext, CancellationToken, Task> asyncAction) : base(string.Empty) {
 			_isAsync = true;
 			_asyncAction = asyncAction;
 			_action = (x, ctx) => Task.Run(() => _asyncAction(x, ctx, new CancellationToken())).GetAwaiter().GetResult();
 		}
 
 		public override IEnumerable<ValidationFailure> Validate(PropertyValidatorContext context) {
-			var customContext = new CustomContext(context);
-			_action((T) context.PropertyValue, customContext);
-			return customContext.Failures;
+			_action((T) context.PropertyValue, context);
+			return context.ParentContext.Failures;
 		}
 
 		public override async Task<IEnumerable<ValidationFailure>> ValidateAsync(PropertyValidatorContext context, CancellationToken cancellation) {
-			var customContext = new CustomContext(context);
-			await _asyncAction((T)context.PropertyValue, customContext, cancellation);
-			return customContext.Failures;
+			await _asyncAction((T)context.PropertyValue, context, cancellation);
+			return context.ParentContext.Failures;
 		}
 
 		protected override bool IsValid(PropertyValidatorContext context) {
@@ -57,57 +55,5 @@
 		public bool ShouldValidateAsync(ValidationContext context) {
 			return _isAsync && context.IsAsync();
 		}
-	}
-
-	/// <summary>
-	/// Custom validation context
-	/// </summary>
-	public class CustomContext {
-		private PropertyValidatorContext _context;
-		private List<ValidationFailure> _failures = new List<ValidationFailure>();
-
-		/// <summary>
-		/// Creates a new CustomContext
-		/// </summary>
-		/// <param name="context">The parent PropertyValidatorContext that represents this execution</param>
-		public CustomContext(PropertyValidatorContext context) {
-			_context = context;
-		}
-
-		/// <summary>
-		/// Adds a new validation failure. 
-		/// </summary>
-		/// <param name="propertyName">The property name</param>
-		/// <param name="errorMessage">The error mesage</param>
-		public void AddFailure(string propertyName, string errorMessage) {
-			errorMessage.Guard("An error message must be specified when calling AddFailure.", nameof(errorMessage));
-			AddFailure(new ValidationFailure(propertyName ?? string.Empty, errorMessage));
-		}
-
-		/// <summary>
-		/// Adds a new validation failure (the property name is inferred) 
-		/// </summary>
-		/// <param name="errorMessage">The error message</param>
-		public void AddFailure(string errorMessage) {
-			errorMessage.Guard("An error message must be specified when calling AddFailure.", nameof(errorMessage));
-			AddFailure(_context.PropertyName, errorMessage);
-		}
-
-		/// <summary>
-		/// Adss a new validation failure
-		/// </summary>
-		/// <param name="failure">The failure to add</param>
-		public void AddFailure(ValidationFailure failure) {
-			failure.Guard("A failure must be specified when calling AddFailure.", nameof(failure));
-			_failures.Add(failure);
-		}
-
-		internal IEnumerable<ValidationFailure> Failures => _failures;
-
-		public PropertyRule Rule => _context.Rule;
-		public string PropertyName => _context.PropertyName;
-		public string DisplayName => _context.DisplayName;
-		public MessageFormatter MessageFormatter => _context.MessageFormatter;
-		public ValidationContext ParentContext => _context.ParentContext;
 	}
 }

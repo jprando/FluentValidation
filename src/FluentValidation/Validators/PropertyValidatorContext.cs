@@ -20,6 +20,7 @@ namespace FluentValidation.Validators {
 	using System;
 	using System.Collections.Generic;
 	using Internal;
+	using Results;
 
 	public class PropertyValidatorContext : IValidationContext {
 		private MessageFormatter _messageFormatter;
@@ -66,5 +67,9 @@ namespace FluentValidation.Validators {
 
 	
 		public IValidatorSelector Selector => ParentContext.Selector;
+		
+		public void AddFailure(ValidationFailure failure) {
+			ParentContext.AddFailure(failure);
+		}
 	}
 }

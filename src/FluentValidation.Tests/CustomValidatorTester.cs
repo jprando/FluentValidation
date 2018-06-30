@@ -236,7 +236,7 @@ namespace FluentValidation.Tests {
 		private class NestedOrderValidator2 : AbstractValidator<Order> {
 			public NestedOrderValidator2() {
 				RuleFor(x=>x).Custom((x, ctx) => {
-					ctx.AddFailure(ctx.ParentContext.PropertyChain.BuildPropertyName("Amount"), "bar");
+					ctx.AddFailure(ctx.PropertyChain.BuildPropertyName("Amount"), "bar");
 				});
 			}
 		}

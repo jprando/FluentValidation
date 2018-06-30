@@ -20,6 +20,7 @@ namespace FluentValidation {
 	using System;
 	using System.Collections.Generic;
 	using Internal;
+	using Results;
 
 	/// <summary>
 	/// Validation context
@@ -80,6 +81,12 @@ namespace FluentValidation {
 		/// Selector
 		/// </summary>
 		IValidatorSelector Selector { get; }
+
+		/// <summary>
+		/// Adss a new validation failure
+		/// </summary>
+		/// <param name="failure">The failure to add</param>
+		void AddFailure(ValidationFailure failure);
 	}
 	
 	/// <summary>
@@ -87,6 +94,11 @@ namespace FluentValidation {
 	/// </summary>
 	public class ValidationContext : IValidationContext {
 
+		internal List<ValidationFailure> Failures = new List<ValidationFailure>();
+
+		/// <summary>
+		/// Additional data.
+		/// </summary>
 		public Dictionary<string, object> RootContextData { get; internal set; } = new Dictionary<string, object>();
 
 		/// <summary>
@@ -132,6 +144,7 @@ namespace FluentValidation {
 		/// Selector
 		/// </summary>
 		public IValidatorSelector Selector { get; private set; }
+
 		/// <summary>
 		/// Whether this is a child context
 		/// </summary>
@@ -142,6 +155,15 @@ namespace FluentValidation {
 		/// </summary>
 		public virtual bool IsChildCollectionContext { get; internal set; }
 
+		/// <summary>
+		/// Adss a new validation failure
+		/// </summary>
+		/// <param name="failure">The failure to add</param>
+		public void AddFailure(ValidationFailure failure) {
+			failure.Guard("A failure must be specified when calling AddFailure.", nameof(failure));
+			Failures.Add(failure);
+		}
+		
 		/// <summary>
 		/// Creates a new ValidationContext based on this one
 		/// </summary>
@@ -180,5 +202,26 @@ namespace FluentValidation {
 			};
 		}
 
+	}
+
+	public static class ContextExtensions {
+		/// <summary>
+		/// Adds a new validation failure. 
+		/// </summary>
+		/// <param name="propertyName">The property name</param>
+		/// <param name="errorMessage">The error mesage</param>
+		public static void AddFailure(this IValidationContext context, string propertyName, string errorMessage) {
+			errorMessage.Guard("An error message must be specified when calling AddFailure.", nameof(errorMessage));
+			context.AddFailure(new ValidationFailure(propertyName ?? string.Empty, errorMessage));
+		}
+
+		/// <summary>
+		/// Adds a new validation failure (the property name is inferred) 
+		/// </summary>
+		/// <param name="errorMessage">The error message</param>
+		public static void AddFailure(this IValidationContext context, string errorMessage) {
+			errorMessage.Guard("An error message must be specified when calling AddFailure.", nameof(errorMessage));
+			context.AddFailure(context.ModelName, errorMessage);
+		}
 	}
 }
