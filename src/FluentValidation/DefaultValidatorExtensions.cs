@@ -1043,7 +1043,7 @@ namespace FluentValidation {
 		/// <param name="action"></param>
 		/// <returns></returns>
 		public static IRuleBuilderInitial<T, TProperty> Custom<T, TProperty>(this IRuleBuilder<T, TProperty> ruleBuilder, Action<TProperty, IValidationContext> action) {
-			return (IRuleBuilderInitial<T, TProperty>) ruleBuilder.SetValidator(new DefaultValidator<TProperty>(action));
+			return (IRuleBuilderInitial<T, TProperty>) ruleBuilder.SetValidator(new CustomValidator<TProperty>(action));
 		}
 
 		/// <summary>
@@ -1055,7 +1055,7 @@ namespace FluentValidation {
 		/// <param name="action"></param>
 		/// <returns></returns>
 		public static IRuleBuilderInitial<T, TProperty> CustomAsync<T, TProperty>(this IRuleBuilder<T, TProperty> ruleBuilder, Func<TProperty, IValidationContext, CancellationToken, Task> action) {
-			return (IRuleBuilderInitial<T, TProperty>) ruleBuilder.SetValidator(new DefaultValidator<TProperty>(action));
+			return (IRuleBuilderInitial<T, TProperty>) ruleBuilder.SetValidator(new CustomValidator<TProperty>(action));
 		}
 	}
 }

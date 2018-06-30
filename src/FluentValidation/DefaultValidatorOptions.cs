@@ -160,7 +160,7 @@ namespace FluentValidation {
 			predicate.Guard("A predicate must be specified when calling When.", nameof(predicate));
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			return rule.Configure(config => {
-				config.ApplyCondition(ctx => predicate((T)ctx.Model), applyConditionTo);
+				config.ApplyCondition(ctx => predicate((T)ctx.Container), applyConditionTo);
 			});
 		}
 
@@ -190,7 +190,7 @@ namespace FluentValidation {
 			predicate.Guard("A predicate must be specified when calling WhenAsync.", nameof(predicate));
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			return rule.Configure(config => {
-				config.ApplyAsyncCondition((ctx, ct) => predicate((T)ctx.Model, ct), applyConditionTo);
+				config.ApplyAsyncCondition((ctx, ct) => predicate((T)ctx.Container, ct), applyConditionTo);
 			});
 		}
 
@@ -202,12 +202,24 @@ namespace FluentValidation {
 		/// <param name="predicate">A lambda expression that specifies a condition for when the validator should not run</param>
 		/// <param name="applyConditionTo">Whether the condition should be applied to the current rule or all rules in the chain</param>
 		/// <returns></returns>
-		public static IRuleBuilderOptions<T, TProperty> UnlessAsync<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, CancellationToken, Task<bool>> predicate, ApplyConditionTo applyConditionTo = ApplyConditionTo.AllValidators)
-		{
+		public static IRuleBuilderOptions<T, TProperty> UnlessAsync<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, CancellationToken, Task<bool>> predicate, ApplyConditionTo applyConditionTo = ApplyConditionTo.AllValidators) {
 			predicate.Guard("A predicate must be specified when calling UnlessAsync", nameof(predicate));
 			return rule.WhenAsync((x, ct) => predicate(x, ct).Then(y => !y, ct), applyConditionTo);
 		}
 
+		/// <summary>
+		/// Applies a filter to a collcetion property.
+		/// </summary>
+		/// <param name="rule">The current rule</param>
+		/// <param name="predicate">The condition</param>
+		/// <returns></returns>
+		public static IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> Where<T, TCollectionElement>(this IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> rule, Func<TCollectionElement, bool> predicate) {
+			predicate.Guard("Cannot pass null to Where.", nameof(predicate));
+			return rule.Configure(cfg => {
+				cfg.ApplyCondition(ctx => predicate((TCollectionElement)ctx.Model));
+			});
+		}
+		
 		/// <summary>
 		/// Triggers an action when the rule passes. Typically used to configure dependent rules. This applies to all preceding rules in the chain. 
 		/// </summary>

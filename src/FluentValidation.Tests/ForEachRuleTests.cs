@@ -19,14 +19,11 @@
 #endregion
 
 namespace FluentValidation.Tests {
-	using System;
 	using System.Collections.Generic;
 	using System.Linq;
 	using System.Threading.Tasks;
-	using Internal;
 	using Validators;
 	using Xunit;
-
 
 	public class ForEachRuleTests {
 		private object _lock = new object();
@@ -82,7 +79,7 @@ namespace FluentValidation.Tests {
 		[Fact]
 		public void Correctly_gets_collection_indicies_async() {
 			var validator = new TestValidator {
-				v => v.RuleForEach(x => x.NickNames).SetValidator(new MyAsyncNotNullValidator())
+				v => v.RuleForEach(x => x.NickNames).SetValidator(new MyAsyncNotNullValidator()),
 			};
 
 			var person = new Person {
@@ -94,10 +91,6 @@ namespace FluentValidation.Tests {
 			result.Errors[1].PropertyName.ShouldEqual("NickNames[2]");
 		}
 
-		class request {
-			public Person person = null;
-		}
-
 		private class MyAsyncNotNullValidator : NotNullValidator {
 			public override bool ShouldValidateAsync(IValidationContext context) {
 				return context.IsAsync;
@@ -106,10 +99,13 @@ namespace FluentValidation.Tests {
 
 		[Fact]
 		public void Nested_collection_for_null_property_should_not_throw_null_reference() {
-			var validator = new InlineValidator<request>();
-			validator.When(r => r.person != null, () => { validator.RuleForEach(x => x.person.NickNames).NotNull(); });
+			var validator = new InlineValidator<NullPropertyModel>();
+			
+			validator.When(r => r.Person != null, () => {
+				validator.RuleForEach(x => x.Person.NickNames).NotNull();
+			});
 
-			var result = validator.Validate(new request());
+			var result = validator.Validate(new NullPropertyModel());
 			result.Errors.Count.ShouldEqual(0);
 		}
 
@@ -165,6 +161,15 @@ namespace FluentValidation.Tests {
 			Assert.All(result, Assert.True);
 		}
 
+		[Fact]
+		public void RuleForEach_works_with_element_filter() {
+			Assert.True(false);
+		}
+
+		
+		public class NullPropertyModel {
+			public Person Person = null;
+		}
 
 		public class ApplicationViewModel {
 			public List<ApplicationGroup> TradingExperience { get; set; } = new List<ApplicationGroup> {new ApplicationGroup()};
@@ -196,7 +201,6 @@ namespace FluentValidation.Tests {
 			public AppropriatenessQuestionViewModelValidator() {
 				RuleFor(m => m.SelectedAnswerID)
 					.SetValidator(new AppropriatenessAnswerViewModelRequiredValidator());
-				;
 			}
 		}
 
