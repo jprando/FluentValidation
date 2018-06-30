@@ -98,14 +98,9 @@ namespace FluentValidation.Tests {
 			public Person person = null;
 		}
 
-		private class MyAsyncNotNullValidator : NotNullValidator, IShouldValidateAsync {
-			[Obsolete]
-			public override bool IsAsync {
-				get { return true; }
-			}
-
-			public bool ShouldValidateAsync(ValidationContext context) {
-				return context.IsAsync();
+		private class MyAsyncNotNullValidator : NotNullValidator {
+			public override bool ShouldValidateAsync(IValidationContext context) {
+				return context.IsAsync;
 			}
 		}
 

@@ -88,7 +88,7 @@ namespace FluentValidation.Tests {
 				// 
 				WhenAsync(async x => x.Id > 0 && x.Age <= 65,
 					() => {
-						RuleFor(x => x.Orders.Count).Equal(0).UnlessAsync(async x => String.IsNullOrWhiteSpace(x.CreditCard) == false);
+						RuleFor(x => x.Orders.Count).Equal(0).UnlessAsync(async (x,c) => String.IsNullOrWhiteSpace(x.CreditCard) == false);
 					}
 				);
 			}

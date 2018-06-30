@@ -28,26 +28,31 @@ namespace FluentValidation.Validators {
 	using Resources;
 	using Results;
 
-	public class DelegatingValidator : IPropertyValidator, IDelegatingValidator, IShouldValidateAsync {
-		private readonly Func<ValidationContext, bool> _condition;
-		private readonly Func<ValidationContext, CancellationToken, Task<bool>> _asyncCondition;
+	public class DelegatingValidator : IPropertyValidator, IDelegatingValidator, IValidationWorker {
+		private readonly Func<IValidationContext, bool> _condition;
+		private readonly Func<IValidationContext, CancellationToken, Task<bool>> _asyncCondition;
 		public IPropertyValidator InnerValidator { get; private set; }
 
-		[Obsolete]
-		public virtual bool IsAsync => InnerValidator.IsAsync || _asyncCondition != null;
-
-		public bool ShouldValidateAsync(ValidationContext context) {
-			return (InnerValidator is IShouldValidateAsync a && a.ShouldValidateAsync(context))
-			       || _asyncCondition != null || InnerValidator.IsAsync;
+		public void Validate(IValidationContext context) {
+			Validate((PropertyValidatorContext)context).ForEach(context.AddFailure);
 		}
 
-		public DelegatingValidator(Func<ValidationContext, bool> condition, IPropertyValidator innerValidator) {
+		public async Task ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			var failures = await ValidateAsync((PropertyValidatorContext) context, cancellationToken);
+			failures.ForEach(context.AddFailure);
+		}
+
+		public bool ShouldValidateAsync(IValidationContext context) {
+			return (InnerValidator is IValidationWorker w && w.ShouldValidateAsync(context)) || _asyncCondition != null;
+		}
+
+		public DelegatingValidator(Func<IValidationContext, bool> condition, IPropertyValidator innerValidator) {
 			_condition = condition;
 			_asyncCondition = null;
 			InnerValidator = innerValidator;
 		}
 
-		public DelegatingValidator(Func<ValidationContext, CancellationToken, Task<bool>> asyncCondition, IPropertyValidator innerValidator) {
+		public DelegatingValidator(Func<IValidationContext, CancellationToken, Task<bool>> asyncCondition, IPropertyValidator innerValidator) {
 			_condition = _ => true;
 			_asyncCondition = asyncCondition;
 			InnerValidator = innerValidator;

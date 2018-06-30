@@ -160,7 +160,7 @@ namespace FluentValidation {
 			predicate.Guard("A predicate must be specified when calling When.", nameof(predicate));
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			return rule.Configure(config => {
-				config.ApplyCondition(ctx => predicate((T)ctx.InstanceToValidate), applyConditionTo);
+				config.ApplyCondition(ctx => predicate((T)ctx.Model), applyConditionTo);
 			});
 		}
 
@@ -186,46 +186,12 @@ namespace FluentValidation {
 		/// <param name="predicate">A lambda expression that specifies a condition for when the validator should run</param>
 		/// <param name="applyConditionTo">Whether the condition should be applied to the current rule or all rules in the chain</param>
 		/// <returns></returns>
-		[Obsolete("Use the overload of WhenAsync that takes a CancellationToken")]
-		public static IRuleBuilderOptions<T, TProperty> WhenAsync<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, Task<bool>> predicate, ApplyConditionTo applyConditionTo = ApplyConditionTo.AllValidators)
-		{
-			predicate.Guard("A predicate must be specified when calling WhenAsync.", nameof(predicate));
-
-			var newPredicate = new Func<ValidationContext, CancellationToken, Task<bool>>((ctx, ct) => predicate((T) ctx.InstanceToValidate));
-
-			return rule.Configure(config => {
-				config.ApplyAsyncCondition(newPredicate, applyConditionTo);
-			});
-		}
-
-		/// <summary>
-		/// Specifies an asynchronous condition limiting when the validator should run. 
-		/// The validator will only be executed if the result of the lambda returns true.
-		/// </summary>
-		/// <param name="rule">The current rule</param>
-		/// <param name="predicate">A lambda expression that specifies a condition for when the validator should run</param>
-		/// <param name="applyConditionTo">Whether the condition should be applied to the current rule or all rules in the chain</param>
-		/// <returns></returns>
 		public static IRuleBuilderOptions<T, TProperty> WhenAsync<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, CancellationToken, Task<bool>> predicate, ApplyConditionTo applyConditionTo = ApplyConditionTo.AllValidators) {
 			predicate.Guard("A predicate must be specified when calling WhenAsync.", nameof(predicate));
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			return rule.Configure(config => {
-				config.ApplyAsyncCondition((ctx, ct) => predicate((T)ctx.InstanceToValidate, ct), applyConditionTo);
+				config.ApplyAsyncCondition((ctx, ct) => predicate((T)ctx.Model, ct), applyConditionTo);
 			});
-		}
-
-		/// <summary>
-		/// Specifies an asynchronous condition limiting when the validator should not run. 
-		/// The validator will only be executed if the result of the lambda returns false.
-		/// </summary>
-		/// <param name="rule">The current rule</param>
-		/// <param name="predicate">A lambda expression that specifies a condition for when the validator should not run</param>
-		/// <param name="applyConditionTo">Whether the condition should be applied to the current rule or all rules in the chain</param>
-		/// <returns></returns>
-		[Obsolete("Use the overload of UnlessAsync that takes a CancellationToken")]
-		public static IRuleBuilderOptions<T, TProperty> UnlessAsync<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, Task<bool>> predicate, ApplyConditionTo applyConditionTo = ApplyConditionTo.AllValidators) {
-			predicate.Guard("A predicate must be specified when calling UnlessAsync", nameof(predicate));
-			return rule.WhenAsync(x => predicate(x).Then(y => !y), applyConditionTo);
 		}
 
 		/// <summary>
@@ -248,47 +214,6 @@ namespace FluentValidation {
 		/// <param name="rule">The current rule</param>
 		/// <param name="action">An action to be invoked if the rule is valid</param>
 		/// <returns></returns>
-		[Obsolete("You no longer need to call RuleFor on the DependentRulesBuilder. Use the other overload of DependentRules that takes an Action and just call the root RuleFor method instead.")]
-		public static IRuleBuilderOptions<T, TProperty> DependentRules<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Action<InlineValidator<T>>  action) {
-
-			var dependencyContainer = new InlineValidator<T>();
-
-			if (rule is IExposesParentValidator<T> exposesParentValidator) {
-				if (exposesParentValidator.ParentValidator is AbstractValidator<T> parent) {
-					// Capture any rules added to the parent validator inside this delegate. 
-					using (parent.NestedValidators.Capture(dependencyContainer.AddRule)) {
-						action(dependencyContainer);
-					}
-				}
-			}
-			else {
-				action(dependencyContainer);
-			}
-
-
-			rule.Configure(cfg => {
-
-				if (cfg.RuleSets.Length > 0) {
-					foreach (var dependentRule in dependencyContainer) {
-						if (dependentRule is PropertyRule propRule && propRule.RuleSets.Length == 0) {
-							propRule.RuleSets = cfg.RuleSets;
-						}
-					}
-				}
-
-				cfg.DependentRules.AddRange(dependencyContainer);
-			});
-			return rule;
-		}
-
-
-		/// <summary>
-		/// Triggers an action when the rule passes. Typically used to configure dependent rules. This applies to all preceding rules in the chain. 
-		/// </summary>
-		/// <param name="rule">The current rule</param>
-		/// <param name="action">An action to be invoked if the rule is valid</param>
-		/// <returns></returns>
-
 		public static IRuleBuilderOptions<T, TProperty> DependentRules<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Action action) {
 
 			var dependencyContainer = new List<IValidationRule>();

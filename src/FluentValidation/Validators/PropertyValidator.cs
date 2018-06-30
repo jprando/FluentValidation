@@ -22,21 +22,15 @@ namespace FluentValidation.Validators {
 	using System;
 	using System.Collections.Generic;
 	using System.Linq;
-	using System.Linq.Expressions;
 	using System.Threading.Tasks;
 	using FluentValidation.Internal;
 	using Resources;
 	using Results;
 
-	public abstract class PropertyValidator : IPropertyValidator {
+	[Obsolete("PropertyValidator is deprecated and will be removed in FluentValidation 9.0. For custom validators, you should either call RuleFor(..).Custom(expression) or inherit from ValidatorBase. For more information on upgrading, see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
+	public abstract class PropertyValidator : IPropertyValidator, IValidationWorker {
 		private IStringSource _errorSource;
 		private IStringSource _errorCodeSource;
-
-		[Obsolete("Use IShouldValidateAsync.ShouldValidatAsync(context) instead")]
-		public virtual bool IsAsync {
-			get { return false; }
-		}
-
 		public Func<PropertyValidatorContext, object> CustomStateProvider { get; set; }
 
 		public Severity Severity { get; set; }
@@ -141,6 +135,19 @@ namespace FluentValidation.Validators {
 		public IStringSource ErrorCodeSource {
 			get => _errorCodeSource;
 			set => _errorCodeSource = value ?? throw new ArgumentNullException(nameof(value));
+		}
+
+		void IValidationWorker.Validate(IValidationContext context) {
+			Validate((PropertyValidatorContext) context).ForEach(context.AddFailure);
+		}
+
+		async Task IValidationWorker.ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			var failures = await ValidateAsync((PropertyValidatorContext) context, cancellationToken);
+			failures.ForEach(context.AddFailure);
+		}
+
+		public virtual bool ShouldValidateAsync(IValidationContext context) {
+			return false;
 		}
 	}
 }

@@ -3,6 +3,29 @@
 	using System.Threading;
 	using System.Threading.Tasks;
 
+	public interface IValidationWorker {
+		/// <summary>
+		/// Performs validation.
+		/// </summary>
+		/// <param name="context">Current validation context</param>
+		void Validate(IValidationContext context);
+
+		/// <summary>
+		/// Performs validation asynchronously.
+		/// </summary>
+		/// <param name="context">Current validation context/</param>
+		/// <param name="cancellationToken">Cancellation context</param>
+		/// <returns></returns>
+		Task ValidateAsync(IValidationContext context, CancellationToken cancellationToken);
+
+		/// <summary>
+		/// Determines whether validation should be run asynchronously.
+		/// </summary>
+		/// <param name="context">Current validation context</param>
+		/// <returns>Bool indicating if validation should be run asynchronously.</returns>
+		bool ShouldValidateAsync(IValidationContext context);
+	}
+	
 	/// <summary>
 	/// Base validator implementation 
 	/// </summary>
@@ -31,7 +54,6 @@
 			_asyncAction = asyncAction;
 			_action = (x, ctx) => Task.Run(() => _asyncAction(x, ctx, new CancellationToken())).GetAwaiter().GetResult();
 		}
-
 
 		/// <summary>
 		/// Performs validation.

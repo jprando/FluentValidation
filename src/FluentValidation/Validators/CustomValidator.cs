@@ -10,13 +10,10 @@
 	/// Custom validator that allows for manual/direct creation of ValidationFailure instances. 
 	/// </summary>
 	/// <typeparam name="T"></typeparam>
-	public class CustomValidator<T> : PropertyValidator, IShouldValidateAsync {
+	public class CustomValidator<T> : PropertyValidator {
 		private readonly Action<T, IValidationContext> _action;
 		private Func<T, IValidationContext, CancellationToken, Task> _asyncAction;
 		private readonly bool _isAsync;
-
-		[Obsolete]
-		public override bool IsAsync => _isAsync;
 
 		/// <summary>
 		/// Creates a new instance of the CustomValidator
@@ -52,7 +49,7 @@
 			throw new NotImplementedException();
 		}
 
-		public bool ShouldValidateAsync(ValidationContext context) {
+		public override bool ShouldValidateAsync(IValidationContext context) {
 			return _isAsync && context.IsAsync;
 		}
 	}

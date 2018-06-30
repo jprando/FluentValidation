@@ -26,15 +26,11 @@ namespace FluentValidation.Validators {
 	using Resources;
 	using Results;
 
-	public abstract class NoopPropertyValidator : IPropertyValidator {
+	[Obsolete("NoOpPropertyValidator is deprecated and will be removed in FluentValidation 9.0. Please inherit from ValidatorBase instead. For information on upgrading to FluentValidation 8, please see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
+	public abstract class NoopPropertyValidator : IPropertyValidator, IValidationWorker {
 		public IStringSource ErrorMessageSource {
 			get { return null; }
 			set { }
-		}
-
-		[Obsolete("Use IShouldValidateAsync.ShouldValidatAsync(context) instead")]
-		public virtual bool IsAsync {
-			get { return false; }
 		}
 
 		public IStringSource ErrorCodeSource {
@@ -60,5 +56,18 @@ namespace FluentValidation.Validators {
 		}
 
 		public Severity Severity { get; set; }
+
+		public virtual void Validate(IValidationContext context) {
+			Validate((PropertyValidatorContext)context).ForEach(context.AddFailure);
+		}
+
+		public virtual async Task ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			var result = await ValidateAsync((PropertyValidatorContext) context, cancellationToken);
+			result.ForEach(context.AddFailure);
+		}
+
+		public virtual bool ShouldValidateAsync(IValidationContext context) {
+			return false;
+		}
 	}
 }

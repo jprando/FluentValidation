@@ -67,7 +67,8 @@ namespace FluentValidation.Validators {
 
 	
 		public IValidatorSelector Selector => ParentContext.Selector;
-		
+		public bool IsAsync => ParentContext.IsAsync;
+
 		public void AddFailure(ValidationFailure failure) {
 			ParentContext.AddFailure(failure);
 		}
