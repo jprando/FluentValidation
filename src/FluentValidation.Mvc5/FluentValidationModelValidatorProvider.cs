@@ -101,7 +101,7 @@ namespace FluentValidation.Mvc {
 										  let validators = rule.Validators
 										  where validators.Any()
 										  from propertyValidator in validators
-										  let modelValidatorForProperty = GetModelValidator(metadata, context, propertyRule, propertyValidator)
+										  let modelValidatorForProperty = GetModelValidator(metadata, context, propertyRule, propertyValidator.Worker as IPropertyValidator)
 										  where modelValidatorForProperty != null
 										  select modelValidatorForProperty;
 					
@@ -124,6 +124,8 @@ namespace FluentValidation.Mvc {
 		}
 
 		protected virtual ModelValidator GetModelValidator(ModelMetadata meta, ControllerContext context, PropertyRule rule, IPropertyValidator propertyValidator) {
+			if (propertyValidator == null) return null;
+			
 			var type = propertyValidator.GetType();
 			
 			var factory = validatorFactories

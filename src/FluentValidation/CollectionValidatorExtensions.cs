@@ -32,16 +32,18 @@ namespace FluentValidation {
 		/// <param name="ruleBuilder">Rule builder</param>
 		/// <param name="validator">The validator to use</param>
 		public static ICollectionValidatorRuleBuilder<T, TCollectionElement> SetCollectionValidator<T, TCollectionElement>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, IValidator<TCollectionElement> validator) {
-			var adaptor = new ChildCollectionValidatorAdaptor(validator);
-			ruleBuilder.SetValidator(adaptor);
-			IValidator<T> parentValidator = null;
-
-			if (ruleBuilder is IExposesParentValidator<T> exposesParentValidator)
-			{
-				parentValidator = exposesParentValidator.ParentValidator;
-			}
-
-			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, adaptor, parentValidator);
+			//todo
+			throw new NotImplementedException();
+//			var adaptor = new ChildCollectionValidatorAdaptor(validator);
+//			ruleBuilder.SetValidator(adaptor);
+//			IValidator<T> parentValidator = null;
+//
+//			if (ruleBuilder is IExposesParentValidator<T> exposesParentValidator)
+//			{
+//				parentValidator = exposesParentValidator.ParentValidator;
+//			}
+//
+//			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, adaptor, parentValidator);
 		}
 
 		/// <summary>
@@ -55,17 +57,20 @@ namespace FluentValidation {
 		/// <returns></returns>
 		public static ICollectionValidatorRuleBuilder<T, TCollectionElement> SetCollectionValidator<T, TCollectionElement, TValidator>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, Func<T, TValidator> validator)
 			where TValidator : IValidator<TCollectionElement> {
-			var adaptor = new ChildCollectionValidatorAdaptor(parent => validator((T) parent), typeof(TValidator));
-			ruleBuilder.SetValidator(adaptor);
-
-			IValidator<T> parentValidator= null;
-
-			if (ruleBuilder is IExposesParentValidator<T> exposesParentValidator) {
-				parentValidator = exposesParentValidator.ParentValidator;
-			}
-
-			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, adaptor, parentValidator);
-		}
+			//todo
+			throw new NotImplementedException();
+//			
+//			var adaptor = new ChildCollectionValidatorAdaptor(parent => validator((T) parent), typeof(TValidator));
+//			ruleBuilder.SetValidator(adaptor);
+//
+//			IValidator<T> parentValidator= null;
+//
+//			if (ruleBuilder is IExposesParentValidator<T> exposesParentValidator) {
+//				parentValidator = exposesParentValidator.ParentValidator;
+//			}
+//
+//			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, adaptor, parentValidator);
+	}
 
 		/// <summary>
 		/// Collection rule builder syntax
@@ -81,40 +86,40 @@ namespace FluentValidation {
 			ICollectionValidatorRuleBuilder<T,TCollectionElement> Where(Func<TCollectionElement, bool> predicate);
 		}
 
-		private class CollectionValidatorRuleBuilder<T,TCollectionElement> : ICollectionValidatorRuleBuilder<T,TCollectionElement>, IExposesParentValidator<T> {
-			IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder;
-			ChildCollectionValidatorAdaptor adaptor;
-
-			public CollectionValidatorRuleBuilder(IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, ChildCollectionValidatorAdaptor adaptor, IValidator<T> parent) {
-				this.ruleBuilder = ruleBuilder;
-				this.adaptor = adaptor;
-				ParentValidator = parent;
-			}
-
-			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetValidator(IPropertyValidator validator) {
-				return ruleBuilder.SetValidator(validator);
-			}
-
-			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetValidator(IValidator<IEnumerable<TCollectionElement>> validator) {
-				return ruleBuilder.SetValidator(validator);
-			}
-
-			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetValidator<TValidator>(Func<T, TValidator> validatorProvider)
-				where TValidator : IValidator<IEnumerable<TCollectionElement>> {
-				return ruleBuilder.SetValidator(validatorProvider);
-			}
-
-			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> Configure(Action<PropertyRule> configurator) {
-				return ((IRuleBuilderOptions<T, IEnumerable<TCollectionElement>>)ruleBuilder).Configure(configurator);
-			}
-
-			public ICollectionValidatorRuleBuilder<T, TCollectionElement> Where(Func<TCollectionElement, bool> predicate) {
-				predicate.Guard("Cannot pass null to Where.", nameof(predicate));
-				adaptor.Predicate = x => predicate((TCollectionElement)x);
-				return this;
-			}
-
-			public IValidator<T> ParentValidator { get; }
-		}
+//		private class CollectionValidatorRuleBuilder<T,TCollectionElement> : ICollectionValidatorRuleBuilder<T,TCollectionElement>, IExposesParentValidator<T> {
+//			IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder;
+//			ChildCollectionValidatorAdaptor adaptor;
+//
+//			public CollectionValidatorRuleBuilder(IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, ChildCollectionValidatorAdaptor adaptor, IValidator<T> parent) {
+//				this.ruleBuilder = ruleBuilder;
+//				this.adaptor = adaptor;
+//				ParentValidator = parent;
+//			}
+//
+//			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetValidator(IValidationWorker validator) {
+//				return ruleBuilder.SetValidator(validator);
+//			}
+//
+//			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetValidator(IValidator<IEnumerable<TCollectionElement>> validator) {
+//				return ruleBuilder.SetValidator(validator);
+//			}
+//
+//			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetValidator<TValidator>(Func<T, TValidator> validatorProvider)
+//				where TValidator : IValidator<IEnumerable<TCollectionElement>> {
+//				return ruleBuilder.SetValidator(validatorProvider);
+//			}
+//
+//			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> Configure(Action<PropertyRule> configurator) {
+//				return ((IRuleBuilderOptions<T, IEnumerable<TCollectionElement>>)ruleBuilder).Configure(configurator);
+//			}
+//
+//			public ICollectionValidatorRuleBuilder<T, TCollectionElement> Where(Func<TCollectionElement, bool> predicate) {
+//				predicate.Guard("Cannot pass null to Where.", nameof(predicate));
+//				adaptor.Predicate = x => predicate((TCollectionElement)x);
+//				return this;
+//			}
+//
+//			public IValidator<T> ParentValidator { get; }
+//		}
 	}
 }

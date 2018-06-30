@@ -64,8 +64,11 @@ namespace FluentValidation.Internal {
 		/// <param name="propertyName"></param>
 		/// <param name="cancellation"></param>
 		/// <returns></returns>
-		protected override Task<bool> InvokePropertyValidatorAsync(List<ValidationFailure> failures, ValidationContext context, IPropertyValidator validator, string propertyName, CancellationToken cancellation) {
-
+		protected override Task<bool> InvokePropertyValidatorAsync(IValidationContext context, IValidationWorker validator, ValidatorMetadata metadata, string propertyName, CancellationToken cancellation) {
+			if (!(context is ValidationContext ctx)) {
+				throw new InvalidOperationException("Cannot use RuleForEach without a ValidationContext. The context supplied was of type " + context.GetType().FullName);
+			}
+			
 			if (string.IsNullOrEmpty(propertyName)) {
 				propertyName = InferPropertyName(Expression);
 			}
@@ -83,20 +86,20 @@ namespace FluentValidation.Internal {
 
 					var results = new List<ValidationFailure>();
 
-					var validators = collectionPropertyValue.Select((v, count) => {
-						var newContext = context.CloneForChildCollectionValidator(context.InstanceToValidate);
+					IEnumerable<Task> validators = collectionPropertyValue.Select(async (v, count) => {
+						var newContext = ctx.CloneForChildCollectionValidator(context.Model);
 						newContext.PropertyChain.Add(propertyName);
 						newContext.PropertyChain.AddIndexer(count);
 
 						var newPropertyContext = new PropertyValidatorContext(newContext, this, newContext.PropertyChain.ToString(), v);
 
-						return validator.ValidateAsync(newPropertyContext, cancellation)
-							.Then(fs => results.AddRange(fs), cancellation);
+						await validator.ValidateAsync(newPropertyContext, cancellation);
+						results.AddRange(newContext.Failures);
 					});
 					
 					return TaskHelpers.Iterate(validators, cancellation).Then(() => {
-						failures.AddRange(results);
-						return !failures.Any();
+						results.ForEach(ctx.AddFailure);
+						return !results.Any();
 					}, runSynchronously: true, cancellationToken: cancellation);
 				}
 			}
@@ -121,7 +124,11 @@ namespace FluentValidation.Internal {
 		/// <param name="validator"></param>
 		/// <param name="propertyName"></param>
 		/// <returns></returns>
-		protected override bool InvokePropertyValidator(List<ValidationFailure> failures, ValidationContext context, Validators.IPropertyValidator validator, string propertyName) {
+		protected override bool InvokePropertyValidator(IValidationContext context, IValidationWorker validator, ValidatorMetadata metadata, string propertyName) {
+			if (!(context is ValidationContext ctx)) {
+				throw new InvalidOperationException("Cannot use RuleForEach without a ValidationContext. The context supplied was of type " + context.GetType().FullName);
+			}
+			
 			if (string.IsNullOrEmpty(propertyName)) {
 				propertyName = InferPropertyName(Expression);
 			}
@@ -140,18 +147,18 @@ namespace FluentValidation.Internal {
 					}
 
 					foreach (var element in collectionPropertyValue) {
-						var newContext = context.CloneForChildCollectionValidator(context.InstanceToValidate);
+						var newContext = ctx.CloneForChildCollectionValidator(context.Model);
 						newContext.PropertyChain.Add(propertyName);
 						newContext.PropertyChain.AddIndexer(count++);
 
 						var newPropertyContext = new PropertyValidatorContext(newContext, this, newContext.PropertyChain.ToString(), element);
-
-						results.AddRange(validator.Validate(newPropertyContext));
+						validator.Validate(newPropertyContext);
+						results.AddRange(newContext.Failures);
 					}
 				}
 			}
 
-			failures.AddRange(results);
+			results.ForEach(ctx.AddFailure);
 			return !results.Any();
 		}
 	}

@@ -71,12 +71,12 @@ namespace FluentValidation.Tests {
 		[Fact]
 		public void Should_set_custom_error() {
 			builder.SetValidator(new TestPropertyValidator()).WithMessage("Bar");
-			builder.Rule.CurrentValidator.ErrorMessageSource.GetString(null).ShouldEqual("Bar");
+			builder.Rule.CurrentValidator.Metadata.ErrorMessageSource.GetString(null).ShouldEqual("Bar");
 		}
 
 		[Fact]
 		public void Should_throw_if_validator_is_null() {
-			typeof(ArgumentNullException).ShouldBeThrownBy(() => builder.SetValidator((IPropertyValidator)null));
+			typeof(ArgumentNullException).ShouldBeThrownBy(() => builder.SetValidator((IValidationWorker)null));
 		}
 
 		[Fact]
@@ -125,7 +125,7 @@ namespace FluentValidation.Tests {
 			builder.SetValidator(validator).When(x => true);
 			builder.Rule.CurrentValidator.ShouldBe<DelegatingValidator>();
 
-			var predicateValidator = (DelegatingValidator)builder.Rule.CurrentValidator;
+			var predicateValidator = (DelegatingValidator)builder.Rule.CurrentValidator.Worker;
 			predicateValidator.InnerValidator.ShouldBeTheSameAs(validator);
 		}
 
@@ -135,34 +135,34 @@ namespace FluentValidation.Tests {
 			builder.SetValidator(validator).WhenAsync(async (x,c) => true);
 			builder.Rule.CurrentValidator.ShouldBe<DelegatingValidator>();
 
-			var predicateValidator = (DelegatingValidator) builder.Rule.CurrentValidator;
+			var predicateValidator = (DelegatingValidator) builder.Rule.CurrentValidator.Worker;
 			predicateValidator.InnerValidator.ShouldBeTheSameAs(validator);
 		}
 		[Fact]
 		public void Calling_validate_should_delegate_to_underlying_validator() {
 			var person = new Person {Surname = "Foo"};
-			var validator = new Mock<IPropertyValidator>();
+			var validator = new Mock<IValidationWorker>();
 			builder.SetValidator(validator.Object);
 
-			builder.Rule.Validate(new ValidationContext<Person>(person, new PropertyChain(), new DefaultValidatorSelector())).ToList();
+			builder.Rule.Validate(new ValidationContext<Person>(person, new PropertyChain(), new DefaultValidatorSelector()));
 
 			validator.Verify(x => x.Validate(It.Is<PropertyValidatorContext>(c => (string)c.PropertyValue == "Foo")));
 
 		}
 		[Fact]
-		public void Calling_ValidateAsync_should_delegate_to_underlying_sync_validator() {
+		public async Task Calling_ValidateAsync_should_delegate_to_underlying_sync_validator() {
 			var person = new Person { Surname = "Foo" };
-			var validator = new Mock<IPropertyValidator>();
+			var validator = new Mock<IValidationWorker>();
 			builder.SetValidator(validator.Object);
 
-			builder.Rule.ValidateAsync(new ValidationContext<Person>(person, new PropertyChain(), new DefaultValidatorSelector()), new CancellationToken()).Result.ToList();
+			await builder.Rule.ValidateAsync(new ValidationContext<Person>(person, new PropertyChain(), new DefaultValidatorSelector()), new CancellationToken());
 
 			validator.Verify(x => x.Validate(It.Is<PropertyValidatorContext>(c => (string)c.PropertyValue == "Foo")));
 
 
 		}
 		[Fact]
-		public void Calling_ValidateAsync_should_delegate_to_underlying_async_validator() {
+		public async Task Calling_ValidateAsync_should_delegate_to_underlying_async_validator() {
 			var person = new Person { Surname = "Foo" };
 			TaskCompletionSource<IEnumerable<ValidationFailure>> tcs = new TaskCompletionSource<IEnumerable<ValidationFailure>>();
 			tcs.SetResult(Enumerable.Empty<ValidationFailure>());
@@ -171,7 +171,7 @@ namespace FluentValidation.Tests {
 			validator.Setup(v => v.ValidateAsync(It.IsAny<PropertyValidatorContext>(), It.IsAny<CancellationToken>())).Returns(tcs.Task);
 			builder.SetValidator(validator.Object);
 
-			builder.Rule.ValidateAsync(new ValidationContext<Person>(person, new PropertyChain(), new DefaultValidatorSelector()), new CancellationToken()).Result.ToList();
+			await builder.Rule.ValidateAsync(new ValidationContext<Person>(person, new PropertyChain(), new DefaultValidatorSelector()), new CancellationToken());
 
 			validator.Verify(x => x.ValidateAsync(It.Is<PropertyValidatorContext>(c => (string)c.PropertyValue == "Foo"), It.IsAny<CancellationToken>()));
 
@@ -228,11 +228,11 @@ namespace FluentValidation.Tests {
 
 		[Fact]
 		public void Result_should_use_custom_property_name_when_no_property_name_can_be_determined() {
-			var builder = new RuleBuilder<Person, int>(PropertyRule.Create<Person, int>(x => x.CalculateSalary()),null);
-			builder.GreaterThan(100).WithName("Foo");
-
-			var results = builder.Rule.Validate(new ValidationContext<Person>(new Person(), new PropertyChain(), new DefaultValidatorSelector()));
-			results.Single().PropertyName.ShouldEqual("Foo");
+			var validator = new InlineValidator<Person>();
+			validator.RuleFor(x => x.CalculateSalary()).GreaterThan(100).WithName("Foo");
+			var context = new ValidationContext<Person>(new Person(), new PropertyChain(), new DefaultValidatorSelector());
+			var result = validator.Validate(context);
+			result.Errors.Single().PropertyName.ShouldEqual("Foo");
 		}
 
 		[Fact]

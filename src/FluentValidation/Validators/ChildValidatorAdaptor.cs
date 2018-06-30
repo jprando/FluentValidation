@@ -63,8 +63,12 @@ namespace FluentValidation.Validators {
 		}
 
 		protected ValidationContext CreateNewValidationContextForChildValidator(object instanceToValidate, PropertyValidatorContext context) {
-			var newContext = context.ParentContext.CloneForChildValidator(instanceToValidate);
-			if(!context.ParentContext.IsChildCollectionContext)
+			if (!(context.ParentContext is ValidationContext parentContext)) {
+				throw new InvalidOperationException("Incorrect context type for use with child validators. Expected ValidationContext, actual was " + context.ParentContext.GetType().FullName);
+			}
+			
+			var newContext = parentContext.CloneForChildValidator(instanceToValidate);
+			if(!parentContext.IsChildCollectionContext)
 				newContext.PropertyChain.Add(context.Rule.PropertyName);
 
 			return newContext;

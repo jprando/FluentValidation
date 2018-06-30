@@ -20,13 +20,14 @@ namespace FluentValidation.Validators {
 	using System;
 	using System.Collections.Generic;
 	using Internal;
+	using Resources;
 	using Results;
 
 	public class PropertyValidatorContext : IValidationContext {
 		private MessageFormatter _messageFormatter;
 		private readonly Lazy<object> _propertyValueContainer;
 
-		public ValidationContext ParentContext { get; }
+		public IValidationContext ParentContext { get; }
 		public PropertyRule Rule { get; }
 		
 		public string ModelName { get; }
@@ -47,7 +48,7 @@ namespace FluentValidation.Validators {
 		object IValidationContext.Model => _propertyValueContainer.Value;
 		public object PropertyValue => _propertyValueContainer.Value;
 
-		public PropertyValidatorContext(ValidationContext parentContext, PropertyRule rule, string propertyName) {
+		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, string propertyName) {
 			ParentContext = parentContext;
 			Rule = rule;
 			ModelName = propertyName;
@@ -58,7 +59,7 @@ namespace FluentValidation.Validators {
 			});
 		}
 
-		public PropertyValidatorContext(ValidationContext parentContext, PropertyRule rule, string propertyName, object propertyValue) {
+		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, string propertyName, object propertyValue) {
 			ParentContext = parentContext;
 			Rule = rule;
 			ModelName = propertyName;
@@ -70,7 +71,10 @@ namespace FluentValidation.Validators {
 		public bool IsAsync => ParentContext.IsAsync;
 
 		public void AddFailure(ValidationFailure failure) {
+			HasFailures = true;
 			ParentContext.AddFailure(failure);
 		}
+
+		public bool HasFailures { get; set; }
 	}
 }

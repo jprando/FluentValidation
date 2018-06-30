@@ -495,19 +495,21 @@ namespace System.Threading.Tasks
 		// <param name="cancellationToken">cancellation token</param>
 		// <returns>a task that signals completed when all the incoming tasks are finished.</returns>
 		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "The exception is propagated in a Task.")]
-		internal static Task IterateAsync<T>(this IEnumerable<Task<T>> asyncIterator, CancellationToken cancellationToken = default(CancellationToken), Func<Task<T>, bool> breakCondition = null)
+		internal static Task<IEnumerable<Task<T>>> IterateAsync<T>(this IEnumerable<Task<T>> asyncIterator, CancellationToken cancellationToken = default(CancellationToken), Func<Task<T>, bool> breakCondition = null)
 		{
-			IEnumerator<Task<T>> enumerator = null;
-			try
-			{
-				enumerator = asyncIterator.GetEnumerator();
-				Task<T> task = IterateImpl<T>(enumerator, cancellationToken, breakCondition);
-				return (enumerator != null) ? task.Finally<T>(enumerator.Dispose, runSynchronously: true) : task;
-			}
-			catch (Exception ex)
-			{
-				return TaskHelpers.FromError<T>(ex);
-			}
+			//todo
+			throw new NotImplementedException();
+//			IEnumerator<Task<T>> enumerator = null;
+//			try
+//			{
+//				enumerator = asyncIterator.GetEnumerator();
+//				Task<T> task = IterateImpl<T>(enumerator, cancellationToken, breakCondition);
+//				return (enumerator != null) ? task.Finally<T>(enumerator.Dispose, runSynchronously: true) : task;
+//			}
+//			catch (Exception ex)
+//			{
+//				return TaskHelpers.FromError<T>(ex);
+//			}
 		}
 		
 		// <summary>

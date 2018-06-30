@@ -30,7 +30,7 @@
 	/// Base validator implementation 
 	/// </summary>
 	/// <typeparam name="T"></typeparam>
-	public class ValidatorBase<T> {
+	public class DefaultValidator<T> : IValidationWorker {
 		private readonly Action<T, IValidationContext> _action;
 		private readonly Func<T, IValidationContext, CancellationToken, Task> _asyncAction;
 		private readonly bool _isAsync;
@@ -39,7 +39,7 @@
 		/// Creates a new instance of the CustomValidator
 		/// </summary>
 		/// <param name="action"></param>
-		public ValidatorBase(Action<T, IValidationContext> action) {
+		public DefaultValidator(Action<T, IValidationContext> action) {
 			_isAsync = false;
 			_action = action;
 			_asyncAction = (x, ctx, cancel) => TaskHelpers.RunSynchronously(() =>_action(x, ctx), cancel);
@@ -49,7 +49,7 @@
 		/// Creates a new isntance of the CutomValidator.
 		/// </summary>
 		/// <param name="asyncAction"></param>
-		public ValidatorBase(Func<T, IValidationContext, CancellationToken, Task> asyncAction) {
+		public DefaultValidator(Func<T, IValidationContext, CancellationToken, Task> asyncAction) {
 			_isAsync = true;
 			_asyncAction = asyncAction;
 			_action = (x, ctx) => Task.Run(() => _asyncAction(x, ctx, new CancellationToken())).GetAwaiter().GetResult();

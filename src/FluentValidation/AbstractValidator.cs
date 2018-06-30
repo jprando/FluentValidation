@@ -121,11 +121,13 @@ namespace FluentValidation {
 				return result;
 			}
 
-			EnsureInstanceNotNull(context.InstanceToValidate);
+			EnsureInstanceNotNull(context.Model);
+
+			foreach (var v in NestedValidators) {
+				v.Validate(context);
+			}
 			
-			var failures = NestedValidators.SelectMany(x => x.Validate(context));
-			
-			foreach (var validationFailure in failures.Where(failure => failure != null)) {
+			foreach (var validationFailure in context.Failures.Where(failure => failure != null)) {
 				result.Errors.Add(validationFailure);
 			}
 
@@ -153,18 +155,16 @@ namespace FluentValidation {
 
 			context.RootContextData["__FV_IsAsyncExecution"] = true;
 
-			var failures = new List<ValidationFailure>();
-			
-			return TaskHelpers.Iterate(
-				NestedValidators
-				.Select(v => v.ValidateAsync(context, cancellation)
-				.Then(fs => failures.AddRange(fs), runSynchronously: true, cancellationToken: cancellation)), cancellation)
+			var tasks = NestedValidators
+				.Select(v => v.ValidateAsync(context, cancellation));
+
+			return TaskHelpers.Iterate(tasks, cancellation)
 				.Then(() => {
-					      foreach (var validationFailure in failures.Where(failure => failure != null)) {
-						      result.Errors.Add(validationFailure);
-					      }
-					      return result;
-				      }, cancellation);
+					foreach (var validationFailure in context.Failures.Where(failure => failure != null)) {
+						result.Errors.Add(validationFailure);
+					}
+					return result;
+				}, runSynchronously:true);
 		}
 
 		/// <summary>
@@ -216,55 +216,7 @@ namespace FluentValidation {
 			var ruleBuilder = new RuleBuilder<T, TProperty>(rule, this);
 			return ruleBuilder;
 		} 
-
-		/// <summary>
-		/// Defines a custom validation rule using a lambda expression.
-		/// If the validation rule fails, it should return a instance of a <see cref="ValidationFailure">ValidationFailure</see>
-		/// If the validation rule succeeds, it should return null.
-		/// </summary>
-		/// <param name="customValidator">A lambda that executes custom validation rules.</param>
-		[Obsolete("Use model-level RuleFor(x => x).Custom((x, context) => {}) instead")]
-		public void Custom(Func<T, ValidationFailure> customValidator) {
-			customValidator.Guard("Cannot pass null to Custom", nameof(customValidator));
-			AddRule(new DelegateValidator<T>(x => new[] { customValidator(x) }));
-		}
-
-		/// <summary>
-		/// Defines a custom validation rule using a lambda expression.
-		/// If the validation rule fails, it should return an instance of <see cref="ValidationFailure">ValidationFailure</see>
-		/// If the validation rule succeeds, it should return null.
-		/// </summary>
-		/// <param name="customValidator">A lambda that executes custom validation rules</param>
-		[Obsolete("Use model-level RuleFor(x => x).Custom((x, context) => {}) instead")]
-		public void Custom(Func<T, ValidationContext<T>, ValidationFailure> customValidator) {
-			customValidator.Guard("Cannot pass null to Custom", nameof(customValidator));
-			AddRule(new DelegateValidator<T>((x, ctx) => new[] { customValidator(x, ctx) }));
-		}
-
-		/// <summary>
-		/// Defines a custom asynchronous validation rule using a lambda expression.
-		/// If the validation rule fails, it should asynchronously return a instance of a <see cref="ValidationFailure">ValidationFailure</see>
-		/// If the validation rule succeeds, it should return null.
-		/// </summary>
-		/// <param name="customValidator">A lambda that executes custom validation rules.</param>
-		[Obsolete("Use model-level RuleFor(x => x).CustomAsync(await (x,context,cancellation) => {}) instead")]
-		public void CustomAsync(Func<T, Task<ValidationFailure>> customValidator) {
-			customValidator.Guard("Cannot pass null to Custom", nameof(customValidator));
-			AddRule(new DelegateValidator<T>(x => customValidator(x).Then(f => new[] {f}.AsEnumerable(), runSynchronously: true)));
-		}
-
-		/// <summary>
-		/// Defines a custom asynchronous validation rule using a lambda expression.
-		/// If the validation rule fails, it should asynchronously return an instance of <see cref="ValidationFailure">ValidationFailure</see>
-		/// If the validation rule succeeds, it should return null.
-		/// </summary>
-		/// <param name="customValidator">A lambda that executes custom validation rules</param>
-		[Obsolete("Use model-level RuleFor(x => x).CustomAsync(await (x,context,cancellation) => {}) instead")]
-		public void CustomAsync(Func<T, ValidationContext<T>, CancellationToken, Task<ValidationFailure>> customValidator) {
-			customValidator.Guard("Cannot pass null to Custom", nameof(customValidator));
-			AddRule(new DelegateValidator<T>((x, ctx, cancel) => customValidator(x, ctx, cancel).Then(f => new[] {f}.AsEnumerable(), runSynchronously: true, cancellationToken: cancel)));
-		}
-
+		
 		/// <summary>
 		/// Defines a RuleSet that can be used to group together several validators.
 		/// </summary>

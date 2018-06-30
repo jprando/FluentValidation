@@ -75,7 +75,7 @@ namespace FluentValidation.AspNetCore {
 					let validators = rule.Validators
 					where validators.Any()
 					from propertyValidator in validators
-					let modelValidatorForProperty = GetModelValidator(context, propertyRule, propertyValidator)
+					let modelValidatorForProperty = GetModelValidator(context, propertyRule, propertyValidator.Worker as IPropertyValidator)
 					where modelValidatorForProperty != null
 					select modelValidatorForProperty;
 
@@ -116,7 +116,9 @@ namespace FluentValidation.AspNetCore {
 			}
 		}
 
-		protected virtual IClientModelValidator GetModelValidator(ClientValidatorProviderContext context, PropertyRule rule, IPropertyValidator propertyValidator)	{
+		protected virtual IClientModelValidator GetModelValidator(ClientValidatorProviderContext context, PropertyRule rule, IPropertyValidator propertyValidator) {
+			if (propertyValidator == null) return null;
+			
 			var type = propertyValidator.GetType();
 
 			var factory = _validatorFactories

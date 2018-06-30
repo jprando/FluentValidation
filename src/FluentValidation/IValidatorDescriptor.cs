@@ -22,8 +22,6 @@ namespace FluentValidation {
 	using System.Reflection;
 	using Validators;
 
-	//TODO: Re-visit this interface for FluentValidation v3. Remove some of the duplication.
-
 	/// <summary>
 	/// Provides metadata about a validator.
 	/// </summary>
@@ -36,12 +34,12 @@ namespace FluentValidation {
 		/// <summary>
 		/// Gets a collection of validators grouped by property.
 		/// </summary>
-		ILookup<string, IPropertyValidator> GetMembersWithValidators();
+		ILookup<string, (IValidationWorker Worker, ValidatorMetadata Metadata)> GetMembersWithValidators();
 		
 		/// <summary>
 		/// Gets validators for a particular property.
 		/// </summary>
-		IEnumerable<IPropertyValidator> GetValidatorsForMember(string name);
+		IEnumerable<(IValidationWorker Worker, ValidatorMetadata Metadata)> GetValidatorsForMember(string name);
 
 		/// <summary>
 		/// Gets rules for a property.

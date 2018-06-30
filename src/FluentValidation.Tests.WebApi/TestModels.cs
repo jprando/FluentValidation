@@ -107,13 +107,6 @@ namespace FluentValidation.Tests.WebApi {
 		public TestModel7Validator() {
 			//This ctor is intentionally blank.
 			RuleFor(x => x.AnIntProperty).LessThan(10).WithMessage("Less than 10");
-			Custom(
-				model => {
-					if (model.CustomProperty == 14) {
-						return new ValidationFailure("CustomProperty", "Cannot be 14");
-					}
-					return null;
-				});
 		}
 	}
 

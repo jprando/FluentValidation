@@ -80,7 +80,7 @@ namespace FluentValidation {
 		public static IRuleBuilderOptions<T, TProperty> WithMessage<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, string errorMessage) {
 			errorMessage.Guard("A message must be specified when calling WithMessage.", nameof(errorMessage));
 			return rule.Configure(config => {
-				config.CurrentValidator.ErrorMessageSource = new StaticStringSource(errorMessage);
+				config.CurrentValidator.Metadata.ErrorMessageSource = new StaticStringSource(errorMessage);
 			});
 		}
 
@@ -94,7 +94,7 @@ namespace FluentValidation {
 			messageProvider.Guard("A messageProvider must be provided.", nameof(messageProvider));
 			Func<object, string> newFunc = x => messageProvider((T)x);
 			return rule.Configure(config => {
-				config.CurrentValidator.ErrorMessageSource = new LazyStringSource(newFunc);
+				config.CurrentValidator.Metadata.ErrorMessageSource = new LazyStringSource(newFunc);
 			});
 		}
 
@@ -114,7 +114,7 @@ namespace FluentValidation {
 				};
 
 
-				config.CurrentValidator.ErrorMessageSource = new ContextAwareLazyStringSource(newFunc);
+				config.CurrentValidator.Metadata.ErrorMessageSource = new ContextAwareLazyStringSource(newFunc);
 			});
 		}
 
@@ -128,7 +128,7 @@ namespace FluentValidation {
 			errorCode.Guard("A error code must be specified when calling WithErrorCode.", nameof(errorCode));
 
 			return rule.Configure(config => {
-				config.CurrentValidator.ErrorCodeSource = new StaticStringSource(errorCode);
+				config.CurrentValidator.Metadata.ErrorCodeSource = new StaticStringSource(errorCode);
 			});
 		}
 
@@ -144,7 +144,7 @@ namespace FluentValidation {
 			resourceName.Guard("A resource name must be provided.", nameof(resourceName));
 
 			return rule.Configure(config => {
-				config.CurrentValidator.ErrorMessageSource = new LocalizedStringSource(resourceType, resourceName);
+				config.CurrentValidator.Metadata.ErrorMessageSource = new LocalizedStringSource(resourceType, resourceName);
 			});
 		}
 
@@ -313,7 +313,7 @@ namespace FluentValidation {
 		public static IRuleBuilderOptions<T, TProperty> WithState<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, object> stateProvider) {
 			stateProvider.Guard("A lambda expression must be passed to WithState", nameof(stateProvider));
 			var wrapper = new Func<PropertyValidatorContext, object>(ctx => stateProvider((T) ctx.Instance));
-			return rule.Configure(config => config.CurrentValidator.CustomStateProvider = wrapper);
+			return rule.Configure(config => config.CurrentValidator.Metadata.CustomStateProvider = wrapper);
 		}
 
 		/// <summary>
@@ -328,10 +328,10 @@ namespace FluentValidation {
 			stateProvider.Guard("A lambda expression must be passed to WithState", nameof(stateProvider));
 
 			var wrapper = new Func<PropertyValidatorContext, object>(ctx => {
-				return stateProvider((T) ctx.Instance, (TProperty) ctx.PropertyValue);
+				return stateProvider((T) ctx.Container, (TProperty) ctx.PropertyValue);
 			});
 
-			return rule.Configure(config => config.CurrentValidator.CustomStateProvider = wrapper);
+			return rule.Configure(config => config.CurrentValidator.Metadata.CustomStateProvider = wrapper);
 		}
 
 		///<summary>
@@ -343,7 +343,7 @@ namespace FluentValidation {
 		/// <param name="severity"></param>
 		/// <returns></returns>
 		public static IRuleBuilderOptions<T, TProperty> WithSeverity<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Severity severity) {
-			return rule.Configure(config => config.CurrentValidator.Severity = severity);
+			return rule.Configure(config => config.CurrentValidator.Metadata.Severity = severity);
 		}
 
 		/// <summary>
