@@ -17,6 +17,7 @@
 #endregion
 
 namespace FluentValidation {
+	using System;
 	using System.Collections.Generic;
 	using Internal;
 
@@ -30,7 +31,6 @@ namespace FluentValidation {
 		/// </summary>
 		/// <param name="instanceToValidate"></param>
 		public ValidationContext(T instanceToValidate) : this(instanceToValidate, new PropertyChain(), ValidatorOptions.ValidatorSelectors.DefaultValidatorSelectorFactory()) {
-			
 		}
 
 		/// <summary>
@@ -41,20 +41,51 @@ namespace FluentValidation {
 		/// <param name="validatorSelector"></param>
 		public ValidationContext(T instanceToValidate, PropertyChain propertyChain, IValidatorSelector validatorSelector)
 			: base(instanceToValidate, propertyChain, validatorSelector) {
-
-			InstanceToValidate = instanceToValidate;
 		}
 
 		/// <summary>
 		/// The object to validate
 		/// </summary>
-		public new T InstanceToValidate { get; private set; }
+		[Obsolete("Use the Model property instead.")]
+		public new T InstanceToValidate => Model;
+
+		/// <summary>
+		/// The object to validate
+		/// </summary>
+		public new T Model => (T)base.Model;
 	}
 
 	/// <summary>
+	/// Validation Context
+	/// </summary>
+	public interface IValidationContext {
+		Dictionary<string, object> RootContextData { get; }
+		/// <summary>
+		/// Property chain
+		/// </summary>
+		PropertyChain PropertyChain { get; }
+		/// <summary>
+		/// Object being validated (either the root object, or a property value)
+		/// </summary>
+		object Model { get; }
+		/// <summary>
+		/// The name of the model (typically the property name)
+		/// </summary>
+		string ModelName { get; }
+		/// <summary>
+		/// The containing object. If a property is being validated, this will contain the root/parent object. 
+		/// </summary>
+		object Container { get; }
+		/// <summary>
+		/// Selector
+		/// </summary>
+		IValidatorSelector Selector { get; }
+	}
+	
+	/// <summary>
 	/// Validation context
 	/// </summary>
-	public class ValidationContext {
+	public class ValidationContext : IValidationContext {
 
 		public Dictionary<string, object> RootContextData { get; internal set; } = new Dictionary<string, object>();
 
@@ -75,7 +106,7 @@ namespace FluentValidation {
 		/// <param name="validatorSelector"></param>
 		public ValidationContext(object instanceToValidate, PropertyChain propertyChain, IValidatorSelector validatorSelector) {
 			PropertyChain = new PropertyChain(propertyChain);
-			InstanceToValidate = instanceToValidate;
+			Model = instanceToValidate;
 			Selector = validatorSelector;
 		}
 
@@ -83,10 +114,20 @@ namespace FluentValidation {
 		/// Property chain
 		/// </summary>
 		public PropertyChain PropertyChain { get; private set; }
+
 		/// <summary>
 		/// Object being validated
 		/// </summary>
-		public object InstanceToValidate { get; private set; }
+		public object Model { get; }
+		
+		string IValidationContext.ModelName => string.Empty;
+		object IValidationContext.Container => null;
+
+		/// <summary>
+		/// Object being validated
+		/// </summary>
+		[Obsolete("Use the Model property instead.")]
+		public object InstanceToValidate => Model;
 		/// <summary>
 		/// Selector
 		/// </summary>
@@ -109,7 +150,7 @@ namespace FluentValidation {
 		/// <param name="selector"></param>
 		/// <returns></returns>
 		public ValidationContext Clone(PropertyChain chain = null, object instanceToValidate = null, IValidatorSelector selector = null) {
-			return new ValidationContext(instanceToValidate ?? this.InstanceToValidate, chain ?? this.PropertyChain, selector ?? this.Selector) {
+			return new ValidationContext(instanceToValidate ?? Model, chain ?? PropertyChain, selector ?? this.Selector) {
 				RootContextData = RootContextData
 			};
 		}

@@ -19,49 +19,52 @@
 namespace FluentValidation.Validators {
 	using System;
 	using System.Collections.Generic;
-	using System.Linq;
-	using System.Reflection;
-	using Attributes;
 	using Internal;
 
-	public class PropertyValidatorContext {
+	public class PropertyValidatorContext : IValidationContext {
 		private MessageFormatter _messageFormatter;
 		private readonly Lazy<object> _propertyValueContainer;
 
-		public ValidationContext ParentContext { get; private set; }
-		public PropertyRule Rule { get; private set; }
-		public string PropertyName { get; private set; }
+		public ValidationContext ParentContext { get; }
+		public PropertyRule Rule { get; }
+		
+		public string ModelName { get; }
+		public string PropertyName => ModelName;
+		public string DisplayName => Rule.GetDisplayName(Container);
 
-		[Obsolete("Use DisplaName instead")]
-		public string PropertyDescription => DisplayName;
+		[Obsolete("Use the Container property instead.")]
+		public object Instance => ParentContext.Model;
+		public object Container => ParentContext.Model;
 
-		public string DisplayName => Rule.GetDisplayName(Instance);
-
-		public object Instance => ParentContext.InstanceToValidate;
+		public Dictionary<string, object> RootContextData => ParentContext.RootContextData;
+		public PropertyChain PropertyChain => ParentContext.PropertyChain;
 
 		public MessageFormatter MessageFormatter => _messageFormatter ?? (_messageFormatter = ValidatorOptions.MessageFormatterFactory());
 
 		//Lazily load the property value
 		//to allow the delegating validator to cancel validation before value is obtained
+		object IValidationContext.Model => _propertyValueContainer.Value;
 		public object PropertyValue => _propertyValueContainer.Value;
 
 		public PropertyValidatorContext(ValidationContext parentContext, PropertyRule rule, string propertyName) {
 			ParentContext = parentContext;
 			Rule = rule;
-			PropertyName = propertyName;
+			ModelName = propertyName;
 			_propertyValueContainer = new Lazy<object>( () => {
-				var value = rule.PropertyFunc(parentContext.InstanceToValidate);
+				var value = rule.PropertyFunc(parentContext.Model);
 				if (rule.Transformer != null) value = rule.Transformer(value);
 				return value;
 			});
 		}
 
-		public PropertyValidatorContext(ValidationContext parentContext, PropertyRule rule, string propertyName, object propertyValue)
-		{
+		public PropertyValidatorContext(ValidationContext parentContext, PropertyRule rule, string propertyName, object propertyValue) {
 			ParentContext = parentContext;
 			Rule = rule;
-			PropertyName = propertyName;
+			ModelName = propertyName;
 			_propertyValueContainer = new Lazy<object>(() => propertyValue);
 		}
+
+	
+		public IValidatorSelector Selector => ParentContext.Selector;
 	}
 }
