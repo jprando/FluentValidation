@@ -56,88 +56,78 @@ namespace FluentValidation.Internal {
 			return new CollectionPropertyRule<TProperty>(member, compiled.CoerceToNonGeneric(), expression, cascadeModeThunk, typeof(TProperty), typeof(T));
 		}
 
-		/// <summary>
-		/// Invokes the validator asynchronously
-		/// </summary>
-		/// <param name="context"></param>
-		/// <param name="validator"></param>
-		/// <param name="propertyName"></param>
-		/// <param name="cancellation"></param>
-		/// <returns></returns>
-		protected override Task<bool> InvokePropertyValidatorAsync(IValidationContext context, IValidationWorker validator, ValidatorMetadata metadata, string propertyName, CancellationToken cancellation) {
+		protected override RuleElement CreateRuleElement(IValidationWorker validator) {
+			return new CollectionRuleElement<TProperty>(validator, new ValidatorMetadata(), this);
+		}
+	}
+
+	//todo: Should this be public? 
+	/// <summary>
+	/// Rule element for collection validators
+	/// </summary>
+	internal class CollectionRuleElement<T> : RuleElement {
+		public CollectionRuleElement(IValidationWorker worker, ValidatorMetadata metadata, PropertyRule rule) : base(worker, metadata, rule) {
+		}
+
+		public override Task<bool> ValidateAsync(IValidationContext context, string propertyName, CancellationToken cancellation) {
 			if (!(context is ValidationContext ctx)) {
 				throw new InvalidOperationException("Cannot use RuleForEach without a ValidationContext. The context supplied was of type " + context.GetType().FullName);
 			}
-			
+
 			if (string.IsNullOrEmpty(propertyName)) {
-				propertyName = InferPropertyName(Expression);
+				propertyName = InferPropertyName(Rule.Expression);
 			}
 
-			var propertyContext = new PropertyValidatorContext(context, this, propertyName);
-			var delegatingValidator = validator as IDelegatingValidator;
+			var propertyContext = new PropertyValidatorContext(context, Rule, propertyName);
 
-			if (delegatingValidator == null || delegatingValidator.CheckCondition(propertyContext.ParentContext)) {
-				var collectionPropertyValue = propertyContext.PropertyValue as IEnumerable<TProperty>;
-
-				if (collectionPropertyValue != null) {
-					if (string.IsNullOrEmpty(propertyName)) {
-						throw new InvalidOperationException("Could not automatically determine the property name ");
-					}
-
-					var results = new List<ValidationFailure>();
-
-					IEnumerable<Task> validators = collectionPropertyValue.Select(async (v, count) => {
-						var newContext = ctx.CloneForChildCollectionValidator(context.Model);
-						newContext.PropertyChain.Add(propertyName);
-						newContext.PropertyChain.AddIndexer(count);
-
-						var newPropertyContext = new PropertyValidatorContext(newContext, this, newContext.PropertyChain.ToString(), v);
-
-						await validator.ValidateAsync(newPropertyContext, cancellation);
-						results.AddRange(newContext.Failures);
-					});
-					
-					return TaskHelpers.Iterate(validators, cancellation).Then(() => {
-						results.ForEach(ctx.AddFailure);
-						return !results.Any();
-					}, runSynchronously: true, cancellationToken: cancellation);
-				}
+			if (Worker is IDelegatingValidator delegatingValidator && !delegatingValidator.CheckCondition(propertyContext.ParentContext)) {
+				// Condition failed. Return immediately. 
+				return TaskHelpers.FromResult(true);
 			}
 
-			return TaskHelpers.FromResult(true);
-		}
-
-		private string InferPropertyName(LambdaExpression expression) {
-			var paramExp = expression.Body as ParameterExpression;
-
-			if (paramExp == null) {
-				throw new InvalidOperationException("Could not infer property name for expression: " + expression + ". Please explicitly specify a property name by calling OverridePropertyName as part of the rule chain. Eg: RuleForEach(x => x).NotNull().OverridePropertyName(\"MyProperty\")");
-			}
-
-			return paramExp.Name;
-		}
-
-		/// <summary>
-		/// Invokes the validator
-		/// </summary>
-		/// <param name="context"></param>
-		/// <param name="validator"></param>
-		/// <param name="propertyName"></param>
-		/// <returns></returns>
-		protected override bool InvokePropertyValidator(IValidationContext context, IValidationWorker validator, ValidatorMetadata metadata, string propertyName) {
-			if (!(context is ValidationContext ctx)) {
-				throw new InvalidOperationException("Cannot use RuleForEach without a ValidationContext. The context supplied was of type " + context.GetType().FullName);
+			if (!(propertyContext.PropertyValue is IEnumerable<T> collectionPropertyValue)) {
+				// Property is not IEnumerable. Return immediately.
+				return TaskHelpers.FromResult(true);
 			}
 			
 			if (string.IsNullOrEmpty(propertyName)) {
-				propertyName = InferPropertyName(Expression);
+				throw new InvalidOperationException("Could not automatically determine the property name ");
 			}
 
-			var propertyContext = new PropertyValidatorContext(context, this, propertyName);
 			var results = new List<ValidationFailure>();
-			var delegatingValidator = validator as IDelegatingValidator;
+
+			IEnumerable<Task> validators = collectionPropertyValue.Select(async (v, count) => {
+				var newContext = ctx.CloneForChildCollectionValidator(context.Model);
+				newContext.PropertyChain.Add(propertyName);
+				newContext.PropertyChain.AddIndexer(count);
+
+				var newPropertyContext = new PropertyValidatorContext(newContext, Rule, newContext.PropertyChain.ToString(), v);
+
+				await Worker.ValidateAsync(newPropertyContext, cancellation);
+				results.AddRange(newContext.Failures);
+			});
+
+			return TaskHelpers.Iterate(validators, cancellation).Then(() => {
+				results.ForEach(ctx.AddFailure);
+				return !results.Any();
+			}, runSynchronously: true, cancellationToken: cancellation);
+
+		}
+
+		public override bool Validate(IValidationContext context, string propertyName) {
+			if (!(context is ValidationContext ctx)) {
+				throw new InvalidOperationException("Cannot use RuleForEach without a ValidationContext. The context supplied was of type " + context.GetType().FullName);
+			}
+
+			if (string.IsNullOrEmpty(propertyName)) {
+				propertyName = InferPropertyName(Rule.Expression);
+			}
+
+			var propertyContext = new PropertyValidatorContext(context, Rule, propertyName);
+			var results = new List<ValidationFailure>();
+			var delegatingValidator = Worker as IDelegatingValidator;
 			if (delegatingValidator == null || delegatingValidator.CheckCondition(propertyContext.ParentContext)) {
-				var collectionPropertyValue = propertyContext.PropertyValue as IEnumerable<TProperty>;
+				var collectionPropertyValue = propertyContext.PropertyValue as IEnumerable<T>;
 
 				int count = 0;
 
@@ -151,8 +141,8 @@ namespace FluentValidation.Internal {
 						newContext.PropertyChain.Add(propertyName);
 						newContext.PropertyChain.AddIndexer(count++);
 
-						var newPropertyContext = new PropertyValidatorContext(newContext, this, newContext.PropertyChain.ToString(), element);
-						validator.Validate(newPropertyContext);
+						var newPropertyContext = new PropertyValidatorContext(newContext, Rule, newContext.PropertyChain.ToString(), element);
+						Worker.Validate(newPropertyContext);
 						results.AddRange(newContext.Failures);
 					}
 				}
@@ -160,6 +150,16 @@ namespace FluentValidation.Internal {
 
 			results.ForEach(ctx.AddFailure);
 			return !results.Any();
+		}
+
+		private string InferPropertyName(LambdaExpression expression) {
+			var paramExp = expression.Body as ParameterExpression;
+
+			if (paramExp == null) {
+				throw new InvalidOperationException("Could not infer property name for expression: " + expression + ". Please explicitly specify a property name by calling OverridePropertyName as part of the rule chain. Eg: RuleForEach(x => x).NotNull().OverridePropertyName(\"MyProperty\")");
+			}
+
+			return paramExp.Name;
 		}
 	}
 }

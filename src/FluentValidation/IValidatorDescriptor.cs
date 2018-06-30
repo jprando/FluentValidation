@@ -20,6 +20,7 @@ namespace FluentValidation {
 	using System.Collections.Generic;
 	using System.Linq;
 	using System.Reflection;
+	using Internal;
 	using Validators;
 
 	/// <summary>
@@ -34,12 +35,12 @@ namespace FluentValidation {
 		/// <summary>
 		/// Gets a collection of validators grouped by property.
 		/// </summary>
-		ILookup<string, (IValidationWorker Worker, ValidatorMetadata Metadata)> GetMembersWithValidators();
+		ILookup<string, RuleElement> GetMembersWithValidators();
 		
 		/// <summary>
 		/// Gets validators for a particular property.
 		/// </summary>
-		IEnumerable<(IValidationWorker Worker, ValidatorMetadata Metadata)> GetValidatorsForMember(string name);
+		IEnumerable<RuleElement> GetValidatorsForMember(string name);
 
 		/// <summary>
 		/// Gets rules for a property.

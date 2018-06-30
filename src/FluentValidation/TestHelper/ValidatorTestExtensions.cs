@@ -80,7 +80,7 @@ namespace FluentValidation.TestHelper {
 			}
 		}
 
-		private static IEnumerable<(IValidationWorker Worker, ValidatorMetadata Metadata)> GetDependentRules<T, TProperty>(string expressionMemberName, Expression<Func<T, TProperty>> expression, IValidatorDescriptor descriptor) {
+		private static IEnumerable<RuleElement> GetDependentRules<T, TProperty>(string expressionMemberName, Expression<Func<T, TProperty>> expression, IValidatorDescriptor descriptor) {
 			var member = expression.IsParameterExpression() ? null : expressionMemberName;
 			var rules = descriptor.GetRulesForMember(member).OfType<PropertyRule>().SelectMany(x => x.DependentRules)
 				.SelectMany(x => x.Validators);
@@ -88,7 +88,7 @@ namespace FluentValidation.TestHelper {
 			return rules;
 		}
 
-		private static (IValidationWorker Worker, ValidatorMetadata Metadata)[] GetModelLevelValidators(IValidatorDescriptor descriptor) {
+		private static RuleElement[] GetModelLevelValidators(IValidatorDescriptor descriptor) {
 			var rules = descriptor.GetRulesForMember(null).OfType<PropertyRule>();
 			return rules.Where(x => x.Expression.IsParameterExpression()).SelectMany(x => x.Validators)
 				.ToArray();

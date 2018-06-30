@@ -58,7 +58,7 @@ namespace FluentValidation {
 		/// Gets all members with their associated validators
 		/// </summary>
 		/// <returns></returns>
-		public virtual ILookup<string, (IValidationWorker Worker, ValidatorMetadata Metadata)> GetMembersWithValidators() {
+		public virtual ILookup<string, RuleElement> GetMembersWithValidators() {
 			var query = from rule in Rules.OfType<PropertyRule>()
 						where rule.PropertyName != null
 						from validator in rule.Validators
@@ -72,7 +72,7 @@ namespace FluentValidation {
 		/// </summary>
 		/// <param name="name"></param>
 		/// <returns></returns>
-		public IEnumerable<(IValidationWorker Worker, ValidatorMetadata Metadata)> GetValidatorsForMember(string name) {
+		public IEnumerable<RuleElement> GetValidatorsForMember(string name) {
 			return GetMembersWithValidators()[name];
 		}
 
@@ -110,7 +110,7 @@ namespace FluentValidation {
 		/// <typeparam name="TValue"></typeparam>
 		/// <param name="accessor"></param>
 		/// <returns></returns>
-		public IEnumerable<(IValidationWorker Worker, ValidatorMetadata Metadata)> GetValidatorsForMember<TValue>(MemberAccessor<T, TValue> accessor)
+		public IEnumerable<RuleElement> GetValidatorsForMember<TValue>(MemberAccessor<T, TValue> accessor)
 		{
 			return from rule in Rules.OfType<PropertyRule>()
 			       where Equals(rule.Member, accessor.Member)

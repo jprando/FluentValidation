@@ -33,7 +33,7 @@ namespace FluentValidation.Internal {
 	/// Defines a rule associated with a property.
 	/// </summary>
 	public class PropertyRule : IValidationRule {
-		readonly List<(IValidationWorker Worker, ValidatorMetadata Metadata)> _validators = new List<(IValidationWorker Worker, ValidatorMetadata Metadata)>();
+		readonly List<RuleElement> _validators = new List<RuleElement>();
 		Func<CascadeMode> _cascadeModeThunk = () => ValidatorOptions.CascadeMode;
 		string _propertyDisplayName;
 		string _propertyName;
@@ -75,7 +75,7 @@ namespace FluentValidation.Internal {
 		/// <summary>
 		/// The current validator being configured by this rule.
 		/// </summary>
-		public (IValidationWorker Worker, ValidatorMetadata Metadata) CurrentValidator { get; private set; }
+		public RuleElement CurrentValidator { get; private set; }
 
 		/// <summary>
 		/// Type of the property being validated
@@ -93,7 +93,7 @@ namespace FluentValidation.Internal {
 		/// <summary>
 		/// Validators associated with this rule.
 		/// </summary>
-		public IEnumerable<(IValidationWorker Worker, ValidatorMetadata Metadata)> Validators => _validators;
+		public IEnumerable<RuleElement> Validators => _validators;
 
 		/// <summary>
 		/// Creates a new property rule.
@@ -139,24 +139,12 @@ namespace FluentValidation.Internal {
 		/// Adds a validator to the rule.
 		/// </summary>
 		public void AddValidator(IValidationWorker validator) {
-			CurrentValidator = (validator, new ValidatorMetadata());
+			CurrentValidator = CreateRuleElement(validator);
 			_validators.Add(CurrentValidator);
 		}
 
-		/// <summary>
-		/// Replaces a validator in this rule. Used to wrap validators.
-		/// </summary>
-		public void ReplaceValidator(IValidationWorker original, IValidationWorker newValidator) {
-			var match = _validators.FirstOrDefault(x => x.Worker == original);
-			int index = _validators.IndexOf(match);
-			
-			if (index > -1) {
-				_validators[index] = (newValidator, match.Metadata);
-
-				if (ReferenceEquals(CurrentValidator.Worker, original)) {
-					CurrentValidator = _validators[index];
-				}
-			}
+		protected virtual RuleElement CreateRuleElement(IValidationWorker validator) {
+			return new RuleElement(validator, new ValidatorMetadata(), this);
 		}
 
 		/// <summary>
@@ -246,10 +234,10 @@ namespace FluentValidation.Internal {
 			foreach (var validator in _validators) {
 				var results = new List<ValidationFailure>();
 				bool success;
-				if (validator.Worker.ShouldValidateAsync(context))
-					success = InvokePropertyValidatorAsync(context, validator.Worker, validator.Metadata, propertyName, default(CancellationToken)).GetAwaiter().GetResult();
+				if (validator.ShouldValidateAsync(context))
+					success = validator.ValidateAsync(context, propertyName, default(CancellationToken)).GetAwaiter().GetResult();
 				else
-					success = InvokePropertyValidator(context, validator.Worker, validator.Metadata, propertyName);
+					success = validator.Validate(context, propertyName);
 
 				if (!success) {
 					hasAnyFailure = true;
@@ -313,7 +301,7 @@ namespace FluentValidation.Internal {
 						return TaskHelpers.Canceled();
 					}
 
-					bool success = InvokePropertyValidator(context, validator.Worker, validator.Metadata, propertyName);
+					bool success = validator.Validate(context, propertyName);
 
 					if (!success) {
 						hasFailures = true;
@@ -333,7 +321,7 @@ namespace FluentValidation.Internal {
 					return TaskHelpers.Completed();
 				}
 
-				var asyncValidators = _validators.Where(v => v.Worker.ShouldValidateAsync(context)).ToList();
+				var asyncValidators = _validators.Where(v => v.ShouldValidateAsync(context)).ToList();
                 
 				// if there's no async validators then we exit
 				if (asyncValidators.Count == 0) {
@@ -348,7 +336,7 @@ namespace FluentValidation.Internal {
 
 				//Then call asyncronous validators in non-blocking way
 				var resultTasks = asyncValidators
-					.Select(v => InvokePropertyValidatorAsync(context, v.Worker, v.Metadata, propertyName, cancellation))
+					.Select(v => v.ValidateAsync(context, propertyName, cancellation))
 					.IterateAsync(cancellation, breakCondition: t => cascade == CascadeMode.StopOnFirstFailure && !t.Result);
 
 				return resultTasks.Then(runSynchronously: true, continuation: tasks => {
@@ -378,29 +366,6 @@ namespace FluentValidation.Internal {
 		}
 
 		/// <summary>
-		/// Invokes the validator asynchronously 
-		/// </summary>
-		/// <param name="context"></param>
-		/// <param name="validator"></param>
-		/// <param name="propertyName"></param>
-		/// <param name="cancellation"></param>
-		/// <returns></returns>
-		protected virtual async Task<bool> InvokePropertyValidatorAsync(IValidationContext context, IValidationWorker validator, ValidatorMetadata metadata, string propertyName, CancellationToken cancellation) {
-			var propertyValidatorContext = new PropertyValidatorContext(context, this, propertyName);
-			await validator.ValidateAsync(propertyValidatorContext, cancellation);
-			return !propertyValidatorContext.HasFailures;
-		}
-
-		/// <summary>
-		/// Invokes a property validator using the specified validation context.
-		/// </summary>
-		protected virtual bool InvokePropertyValidator(IValidationContext context, IValidationWorker validator, ValidatorMetadata metadata, string propertyName) {
-			var propertyContext = new PropertyValidatorContext(context, this, propertyName);
-			validator.Validate(propertyContext);
-			return !propertyContext.HasFailures;
-		}
-
-		/// <summary>
 		/// Applies a condition to the rule
 		/// </summary>
 		/// <param name="predicate"></param>
@@ -409,8 +374,7 @@ namespace FluentValidation.Internal {
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			if (applyConditionTo == ApplyConditionTo.AllValidators) {
 				foreach (var validator in Validators.ToList()) {
-					var wrappedValidator = new DelegatingValidator(predicate, validator.Worker);
-					ReplaceValidator(validator.Worker, wrappedValidator);
+					validator.Worker = new DelegatingValidator(predicate, validator.Worker);
 				}
 
 				foreach (var dependentRule in DependentRules.ToList()) {
@@ -418,11 +382,8 @@ namespace FluentValidation.Internal {
 				}
 			}
 			else {
-				var wrappedValidator = new DelegatingValidator(predicate, CurrentValidator.Worker);
-				ReplaceValidator(CurrentValidator.Worker, wrappedValidator);
+				CurrentValidator.Worker = new DelegatingValidator(predicate, CurrentValidator.Worker);
 			}
-
-
 		}
 
 		/// <summary>
@@ -433,9 +394,8 @@ namespace FluentValidation.Internal {
 		public void ApplyAsyncCondition(Func<IValidationContext, CancellationToken, Task<bool>> predicate, ApplyConditionTo applyConditionTo = ApplyConditionTo.AllValidators) {
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			if (applyConditionTo == ApplyConditionTo.AllValidators) {
-				foreach (var validator in Validators.ToList()) {
-					var wrappedValidator = new DelegatingValidator(predicate, validator.Worker);
-					ReplaceValidator(validator.Worker, wrappedValidator);
+				foreach (var validator in Validators) {
+					validator.Worker = new DelegatingValidator(predicate, validator.Worker);
 				}
 
 				foreach (var dependentRule in DependentRules.ToList()) {
@@ -443,9 +403,66 @@ namespace FluentValidation.Internal {
 				}
 			}
 			else {
-				var wrappedValidator = new DelegatingValidator(predicate, CurrentValidator.Worker);
-				ReplaceValidator(CurrentValidator.Worker, wrappedValidator);
+				CurrentValidator.Worker = new DelegatingValidator(predicate, CurrentValidator.Worker);
 			}
 		}
 	}
+	
+	/// <summary>
+	/// Holds a validation worker and its metadata.
+	/// </summary>
+	public class RuleElement {
+		private IValidationWorker _worker;
+
+		protected PropertyRule Rule { get; }
+
+		/// <summary>
+		/// Creates a new Container
+		/// </summary>
+		/// <param name="worker"></param>
+		/// <param name="metadata"></param>
+		/// <param name="rule"></param>
+		public RuleElement(IValidationWorker worker, ValidatorMetadata metadata, PropertyRule rule) {
+			_worker = worker;
+			Metadata = metadata;
+			Rule = rule;
+		}
+
+		/// <summary>
+		/// A validator to run.
+		/// </summary>
+		public IValidationWorker Worker {
+			get => _worker;
+			set => _worker = value ?? throw new ArgumentNullException(nameof(value), "Cannot set Worker to null");
+		}
+
+		/// <summary>
+		/// Metadata for this validator.
+		/// </summary>
+		public ValidatorMetadata Metadata { get; }
+
+		/// <summary>
+		/// Invokes the validator asynchronously 
+		/// </summary>
+		/// <returns></returns>
+		public virtual async Task<bool> ValidateAsync(IValidationContext context, string propertyName, CancellationToken cancellation) {
+			var propertyValidatorContext = new PropertyValidatorContext(context, Rule, propertyName);
+			await _worker.ValidateAsync(propertyValidatorContext, cancellation);
+			return !propertyValidatorContext.HasFailures;
+		}
+
+		/// <summary>
+		/// Invokes a property validator using the specified validation context.
+		/// </summary>
+		public virtual bool Validate(IValidationContext context, string propertyName) {
+			var propertyContext = new PropertyValidatorContext(context, Rule, propertyName);
+			_worker.Validate(propertyContext);
+			return !propertyContext.HasFailures;
+		}
+		
+		public virtual bool ShouldValidateAsync(IValidationContext context) {
+			return _worker.ShouldValidateAsync(context);
+		}
+	}
+
 }
