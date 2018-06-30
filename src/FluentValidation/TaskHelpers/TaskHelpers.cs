@@ -5,6 +5,8 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace System.Threading.Tasks
 {
+	using Linq;
+
 	// <summary>
 	// Helpers for safely using Task libraries. 
 	// </summary>
@@ -497,19 +499,17 @@ namespace System.Threading.Tasks
 		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "The exception is propagated in a Task.")]
 		internal static Task<IEnumerable<Task<T>>> IterateAsync<T>(this IEnumerable<Task<T>> asyncIterator, CancellationToken cancellationToken = default(CancellationToken), Func<Task<T>, bool> breakCondition = null)
 		{
-			//todo
-			throw new NotImplementedException();
-//			IEnumerator<Task<T>> enumerator = null;
-//			try
-//			{
-//				enumerator = asyncIterator.GetEnumerator();
-//				Task<T> task = IterateImpl<T>(enumerator, cancellationToken, breakCondition);
-//				return (enumerator != null) ? task.Finally<T>(enumerator.Dispose, runSynchronously: true) : task;
-//			}
-//			catch (Exception ex)
-//			{
-//				return TaskHelpers.FromError<T>(ex);
-//			}
+			IEnumerator<Task<T>> enumerator = null;
+			try
+			{
+				enumerator = asyncIterator.GetEnumerator();
+				var task = IterateImpl<T>(enumerator, cancellationToken, breakCondition);
+				return (enumerator != null) ? task.Finally(enumerator.Dispose, runSynchronously: true) : task;
+			}
+			catch (Exception ex)
+			{
+				return TaskHelpers.FromError<IEnumerable<Task<T>>>(ex);
+			}
 		}
 		
 		// <summary>
@@ -517,7 +517,7 @@ namespace System.Threading.Tasks
 		// Contains special logic to help speed up common cases.
 		// </summary>
 		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "The exception is propagated in a Task.")]
-		private static Task<T> IterateImpl<T>(IEnumerator<Task<T>> enumerator, CancellationToken cancellationToken, Func<Task<T>, bool> breakCondition)
+		private static Task<IEnumerable<Task<T>>> IterateImpl<T>(IEnumerator<Task<T>> enumerator, CancellationToken cancellationToken, Func<Task<T>, bool> breakCondition)
 		{
 			try
 			{
@@ -526,21 +526,22 @@ namespace System.Threading.Tasks
 					// short-circuit: iteration canceled
 					if (cancellationToken.IsCancellationRequested)
 					{
-						return TaskHelpers.Canceled<T>();
+						return TaskHelpers.Canceled<IEnumerable<Task<T>>>();
 					}
 
 					// short-circuit: iteration complete
 					if (!enumerator.MoveNext())
 					{
-						return TaskHelpers.FromResult(default(T));
+						return TaskHelpers.FromResult(default(IEnumerable<Task<T>>));
 					}
 
 					// fast case: Task completed synchronously & successfully
 					Task<T> currentTask = enumerator.Current;
+					
 					if (currentTask.Status == TaskStatus.RanToCompletion)
 					{
 						if (breakCondition != null && breakCondition(currentTask))
-							return currentTask;
+							return TaskHelpers.FromResult(new[] { currentTask }.AsEnumerable());
 
 						continue;
 					}
@@ -548,7 +549,7 @@ namespace System.Threading.Tasks
 					// fast case: Task completed synchronously & unsuccessfully
 					if (currentTask.IsCanceled || currentTask.IsFaulted)
 					{
-						return currentTask;
+						return TaskHelpers.FromResult(new[] { currentTask }.AsEnumerable());
 					}
 
 					// slow case: Task isn't yet complete
@@ -557,14 +558,14 @@ namespace System.Threading.Tasks
 			}
 			catch (Exception ex)
 			{
-				return TaskHelpers.FromError<T>(ex);
+				return TaskHelpers.FromError<IEnumerable<Task<T>>>(ex);
 			}
 		}
 
 		// <summary>
 		// Fallback for IterateImpl when the antecedent Task isn't yet complete.
 		// </summary>
-		private static Task<T> IterateImplIncompleteTask<T>(IEnumerator<Task<T>> enumerator, Task<T> currentTask, CancellationToken cancellationToken, Func<Task<T>, bool> breakCondition)
+		private static Task<IEnumerable<Task<T>>> IterateImplIncompleteTask<T>(IEnumerator<Task<T>> enumerator, Task<T> currentTask, CancellationToken cancellationToken, Func<Task<T>, bool> breakCondition)
 		{
 			// There's a race condition here, the antecedent Task could complete between
 			// the check in Iterate and the call to Then below. If this happens, we could
@@ -574,7 +575,7 @@ namespace System.Threading.Tasks
 			// worth worrying about.
 
 			return currentTask.Then(
-				() => breakCondition != null && breakCondition(currentTask) ? TaskHelpers.FromResult(default(T)) : IterateImpl(enumerator, cancellationToken, breakCondition),
+				() => breakCondition != null && breakCondition(currentTask) ? TaskHelpers.FromResult(default(IEnumerable<Task<T>>)) : IterateImpl(enumerator, cancellationToken, breakCondition),
 				runSynchronously: true
 			);
 		}
