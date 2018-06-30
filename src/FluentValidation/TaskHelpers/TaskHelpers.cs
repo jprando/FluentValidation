@@ -155,7 +155,7 @@ namespace System.Threading.Tasks
 		// <summary>
 		// Returns an error task. The task is Completed, IsCanceled = False, IsFaulted = True
 		// </summary>
-		private static Task FromError(Exception exception)
+		internal static Task FromError(Exception exception)
 		{
 			return FromError<AsyncVoid>(exception);
 		}
@@ -247,7 +247,7 @@ namespace System.Threading.Tasks
 
 		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "The caught exception type is reflected into a faulted task.")]
 		[SuppressMessage("Microsoft.Web.FxCop", "MW1201:DoNotCallProblematicMethodsOnTask", Justification = "The usages here are deemed safe, and provide the implementations that this rule relies upon.")]
-		private static Task<TResult> FinallyImplContinuation<TResult>(Task task, Action continuation, bool runSynchronously = false)
+		internal static Task<TResult> FinallyImplContinuation<TResult>(Task task, Action continuation, bool runSynchronously = false)
 		{
 			TaskCompletionSource<TResult> tcs = new TaskCompletionSource<TResult>();
 
@@ -276,7 +276,7 @@ namespace System.Threading.Tasks
 		// exception and lose track of the inner exception.
 		// </remarks>
 		[SuppressMessage("Microsoft.Performance", "CA1804:RemoveUnusedLocals", MessageId = "unused", Justification = "We only call the property getter for its side effect; we don't care about the value.")]
-		private static void MarkExceptionsObserved(this Task task)
+		internal static void MarkExceptionsObserved(this Task task)
 		{
 			Exception unused = task.Exception;
 		}
@@ -354,7 +354,7 @@ namespace System.Threading.Tasks
 		// <summary>
 		// Returns a canceled Task. The task is completed, IsCanceled = True, IsFaulted = False.
 		// </summary>
-		private static Task Canceled()
+		internal static Task Canceled()
 		{
 			return CancelCache<AsyncVoid>.Canceled;
 		}
@@ -362,7 +362,7 @@ namespace System.Threading.Tasks
 		// <summary>
 		// Returns a completed task that has no result. 
 		// </summary>        
-		private static Task Completed()
+		internal static Task Completed()
 		{
 			return DefaultCompleted;
 		}
@@ -484,5 +484,124 @@ namespace System.Threading.Tasks
 				return tcs.Task;
 			}
 		}
+	}
+
+	internal static class AsyncExtensions {
+		// <summary>
+		// Return a task that runs all the tasks inside the iterator sequentially. It stops as soon
+		// as one of the tasks fails or cancels, or after all the tasks have run successfully.
+		// </summary>
+		// <param name="asyncIterator">collection of tasks to wait on</param>
+		// <param name="cancellationToken">cancellation token</param>
+		// <returns>a task that signals completed when all the incoming tasks are finished.</returns>
+		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "The exception is propagated in a Task.")]
+		internal static Task IterateAsync<T>(this IEnumerable<Task<T>> asyncIterator, CancellationToken cancellationToken = default(CancellationToken), Func<Task<T>, bool> breakCondition = null)
+		{
+			IEnumerator<Task<T>> enumerator = null;
+			try
+			{
+				enumerator = asyncIterator.GetEnumerator();
+				Task<T> task = IterateImpl<T>(enumerator, cancellationToken, breakCondition);
+				return (enumerator != null) ? task.Finally<T>(enumerator.Dispose, runSynchronously: true) : task;
+			}
+			catch (Exception ex)
+			{
+				return TaskHelpers.FromError<T>(ex);
+			}
+		}
+		
+		// <summary>
+		// Provides the implementation of the Iterate method.
+		// Contains special logic to help speed up common cases.
+		// </summary>
+		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "The exception is propagated in a Task.")]
+		private static Task<T> IterateImpl<T>(IEnumerator<Task<T>> enumerator, CancellationToken cancellationToken, Func<Task<T>, bool> breakCondition)
+		{
+			try
+			{
+				while (true)
+				{
+					// short-circuit: iteration canceled
+					if (cancellationToken.IsCancellationRequested)
+					{
+						return TaskHelpers.Canceled<T>();
+					}
+
+					// short-circuit: iteration complete
+					if (!enumerator.MoveNext())
+					{
+						return TaskHelpers.FromResult(default(T));
+					}
+
+					// fast case: Task completed synchronously & successfully
+					Task<T> currentTask = enumerator.Current;
+					if (currentTask.Status == TaskStatus.RanToCompletion)
+					{
+						if (breakCondition != null && breakCondition(currentTask))
+							return currentTask;
+
+						continue;
+					}
+
+					// fast case: Task completed synchronously & unsuccessfully
+					if (currentTask.IsCanceled || currentTask.IsFaulted)
+					{
+						return currentTask;
+					}
+
+					// slow case: Task isn't yet complete
+					return IterateImplIncompleteTask(enumerator, currentTask, cancellationToken, breakCondition);
+				}
+			}
+			catch (Exception ex)
+			{
+				return TaskHelpers.FromError<T>(ex);
+			}
+		}
+
+		// <summary>
+		// Fallback for IterateImpl when the antecedent Task isn't yet complete.
+		// </summary>
+		private static Task<T> IterateImplIncompleteTask<T>(IEnumerator<Task<T>> enumerator, Task<T> currentTask, CancellationToken cancellationToken, Func<Task<T>, bool> breakCondition)
+		{
+			// There's a race condition here, the antecedent Task could complete between
+			// the check in Iterate and the call to Then below. If this happens, we could
+			// end up growing the stack indefinitely. But the chances of (a) even having
+			// enough Tasks in the enumerator in the first place and of (b) *every* one
+			// of them hitting this race condition are so extremely remote that it's not
+			// worth worrying about.
+
+			return currentTask.Then(
+				() => breakCondition != null && breakCondition(currentTask) ? TaskHelpers.FromResult(default(T)) : IterateImpl(enumerator, cancellationToken, breakCondition),
+				runSynchronously: true
+			);
+		}
+		
+		// <summary>
+		// Calls the given continuation, after the given task has completed, regardless of the state
+		// the task ended in. Intended to roughly emulate C# 5's support for "finally" in async methods.
+		// </summary>
+		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "The caught exception type is reflected into a faulted task.")]
+		private static Task<T> Finally<T>(this Task<T> task, Action continuation, bool runSynchronously = false)
+		{
+			// Stay on the same thread if we can
+			if (task.IsCompleted)
+			{
+				try
+				{
+					continuation();
+					return task;
+				}
+				catch (Exception ex)
+				{
+					TaskHelpers.MarkExceptionsObserved(task);
+					return TaskHelpers.FromError<T>(ex);
+				}
+			}
+
+			// Split into a continuation method so that we don't create a closure unnecessarily
+			return TaskHelpers.FinallyImplContinuation<T>(task, continuation, runSynchronously);
+		}
+
 	}
 }

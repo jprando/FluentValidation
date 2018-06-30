@@ -64,7 +64,7 @@ namespace FluentValidation.Internal {
 		/// <param name="propertyName"></param>
 		/// <param name="cancellation"></param>
 		/// <returns></returns>
-		protected override Task<IEnumerable<ValidationFailure>> InvokePropertyValidatorAsync(ValidationContext context, IPropertyValidator validator, string propertyName, CancellationToken cancellation) {
+		protected override Task<bool> InvokePropertyValidatorAsync(List<ValidationFailure> failures, ValidationContext context, IPropertyValidator validator, string propertyName, CancellationToken cancellation) {
 
 			if (string.IsNullOrEmpty(propertyName)) {
 				propertyName = InferPropertyName(Expression);
@@ -94,12 +94,14 @@ namespace FluentValidation.Internal {
 							.Then(fs => results.AddRange(fs), cancellation);
 					});
 					
-					return TaskHelpers.Iterate(validators, cancellation)
-							.Then(() => results.AsEnumerable(), runSynchronously: true, cancellationToken: cancellation);
+					return TaskHelpers.Iterate(validators, cancellation).Then(() => {
+						failures.AddRange(results);
+						return !failures.Any();
+					}, runSynchronously: true, cancellationToken: cancellation);
 				}
 			}
 
-			return TaskHelpers.FromResult(Enumerable.Empty<ValidationFailure>());
+			return TaskHelpers.FromResult(true);
 		}
 
 		private string InferPropertyName(LambdaExpression expression) {
@@ -119,7 +121,7 @@ namespace FluentValidation.Internal {
 		/// <param name="validator"></param>
 		/// <param name="propertyName"></param>
 		/// <returns></returns>
-		protected override IEnumerable<Results.ValidationFailure> InvokePropertyValidator(ValidationContext context, Validators.IPropertyValidator validator, string propertyName) {
+		protected override bool InvokePropertyValidator(List<ValidationFailure> failures, ValidationContext context, Validators.IPropertyValidator validator, string propertyName) {
 			if (string.IsNullOrEmpty(propertyName)) {
 				propertyName = InferPropertyName(Expression);
 			}
@@ -149,7 +151,8 @@ namespace FluentValidation.Internal {
 				}
 			}
 
-			return results;
+			failures.AddRange(results);
+			return !results.Any();
 		}
 	}
 }
