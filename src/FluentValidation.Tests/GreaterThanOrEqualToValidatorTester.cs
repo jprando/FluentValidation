@@ -99,7 +99,7 @@ namespace FluentValidation.Tests {
 		[Fact]
 		public void Comparison_type() {
 			var propertyValidator = validator.CreateDescriptor()
-				.GetValidatorsForMember("Id").Cast<GreaterThanOrEqualValidator>().Single();
+				.GetValidatorsForMember("Id").Select(x => x.Worker).Cast<GreaterThanOrEqualValidator>().Single();
 
 			propertyValidator.Comparison.ShouldEqual(Comparison.GreaterThanOrEqual);
 		}

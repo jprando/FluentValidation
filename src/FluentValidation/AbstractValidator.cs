@@ -251,7 +251,7 @@ namespace FluentValidation {
 			}
 
 			// Must apply the predicate after the rule has been fully created to ensure any rules-specific conditions have already been applied.
-			propertyRules.ForEach(x => x.ApplyCondition(ctx => predicate((T)ctx.Model)));
+			propertyRules.ForEach(x => x.ApplyCondition(ctx => predicate((T)ctx.Container)));
 		}
 
 		/// <summary>
@@ -291,7 +291,7 @@ namespace FluentValidation {
 			}
 
 			// Must apply the predicate after the rule has been fully created to ensure any rules-specific conditions have already been applied.
-			propertyRules.ForEach(x => x.ApplyAsyncCondition((ctx, token) => predicate((T)ctx.Model, token)));
+			propertyRules.ForEach(x => x.ApplyAsyncCondition((ctx, token) => predicate((T)ctx.Container, token)));
 		}
 
 		/// <summary>

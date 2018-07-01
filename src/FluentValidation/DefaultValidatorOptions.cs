@@ -109,12 +109,12 @@ namespace FluentValidation {
 
 			return rule.Configure(config => {
 
-				Func<PropertyValidatorContext, string> newFunc = context => {
-					return messageProvider((T)context.Instance, (TProperty)context.PropertyValue);
+				Func<IValidationContext, string> newFunc = context => {
+					return messageProvider((T)context.Container, (TProperty)context.Model);
 				};
 
 
-				config.CurrentValidator.Metadata.ErrorMessageSource = new ContextAwareLazyStringSource(newFunc);
+				config.CurrentValidator.Metadata.ErrorMessageSource = new LazyStringSource(newFunc);
 			});
 		}
 

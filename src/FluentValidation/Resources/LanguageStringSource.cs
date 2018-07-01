@@ -13,7 +13,7 @@
 			_key = key;
 		}
 
-		public string GetString(object context) {
+		public string GetString(IValidationContext context) {
 			return ValidatorOptions.LanguageManager.GetString(_key);
 		}
 

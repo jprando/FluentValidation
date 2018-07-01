@@ -209,11 +209,11 @@ namespace FluentValidation.Internal {
 		/// <summary>
 		/// Display name for the property. 
 		/// </summary>
-		public string GetDisplayName(object model) {
+		public string GetDisplayName(IValidationContext context) {
 			string result = null;
 
 			if (DisplayName != null) {
-				result = DisplayName.GetString(model);
+				result = DisplayName.GetString(context);
 			}
 
 			if (result == null) {
@@ -229,7 +229,7 @@ namespace FluentValidation.Internal {
 		/// <param name="context">Validation Context</param>
 		/// <returns>A collection of validation failures</returns>
 		public virtual bool Validate(IValidationContext context) {
-			string displayName = GetDisplayName(context.Model);
+			string displayName = GetDisplayName(context);
 
 			if (PropertyName == null && displayName == null) {
 				//No name has been specified. Assume this is a model-level rule, so we should use empty string instead. 
@@ -297,7 +297,7 @@ namespace FluentValidation.Internal {
 					context.RootContextData["__FV_IsAsyncExecution"] = true;
 				}
 
-				var displayName = GetDisplayName(context.Model);
+				var displayName = GetDisplayName(context);
 
 				if (PropertyName == null && displayName == null)
 				{
@@ -500,7 +500,7 @@ namespace FluentValidation.Internal {
 		/// </summary>
 		/// <returns></returns>
 		public virtual async Task<bool> ValidateAsync(IValidationContext context, string propertyName, CancellationToken cancellation) {
-			var propertyValidatorContext = new PropertyValidatorContext(context, Rule, propertyName);
+			var propertyValidatorContext = new PropertyValidatorContext(context, Rule, Metadata.Clone(propertyName));
 			await _worker.ValidateAsync(propertyValidatorContext, cancellation);
 			return !propertyValidatorContext.HasFailures;
 		}
@@ -509,7 +509,7 @@ namespace FluentValidation.Internal {
 		/// Invokes a property validator using the specified validation context.
 		/// </summary>
 		public virtual bool Validate(IValidationContext context, string propertyName) {
-			var propertyContext = new PropertyValidatorContext(context, Rule, propertyName);
+			var propertyContext = new PropertyValidatorContext(context, Rule, Metadata.Clone(propertyName));
 			_worker.Validate(propertyContext);
 			return !propertyContext.HasFailures;
 		}

@@ -120,7 +120,7 @@ namespace FluentValidation.Validators {
 			failure.FormattedMessagePlaceholderValues = context.MessageFormatter.PlaceholderValues;
 			failure.ResourceName = _errorSource.ResourceName;
 			failure.ErrorCode = (_errorCodeSource != null)
-				? _errorCodeSource.GetString(context.Instance)
+				? _errorCodeSource.GetString(context)
 				: ValidatorOptions.ErrorCodeResolver(this);
 
 			if (CustomStateProvider != null) {
@@ -138,15 +138,31 @@ namespace FluentValidation.Validators {
 		}
 
 		bool IValidationWorker.Validate(IValidationContext context) {
+			SetMetadata(((PropertyValidatorContext) context).Metadata);
 			var failures = Validate((PropertyValidatorContext) context).ToList();
 			failures.ForEach(context.AddFailure);
 			return !failures.Any();
 		}
 
 		async Task<bool> IValidationWorker.ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			SetMetadata(((PropertyValidatorContext) context).Metadata);
 			var failures = (await ValidateAsync((PropertyValidatorContext) context, cancellationToken)).ToList();
 			failures.ForEach(context.AddFailure);
 			return !failures.Any();
+		}
+
+		private void SetMetadata(ValidatorMetadata metadata) {
+			// For backwards compatibility, copy from the metadata object
+			// to the metadata properties on the legacy PropertyValidator.
+			if (metadata.ErrorCodeSource != null) {
+				ErrorCodeSource = metadata.ErrorCodeSource;
+			}
+
+			if (metadata.ErrorMessageSource != null) {
+				ErrorMessageSource = metadata.ErrorMessageSource;
+			}
+
+			Severity = metadata.Severity;
 		}
 
 		public virtual bool ShouldValidateAsync(IValidationContext context) {

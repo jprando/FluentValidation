@@ -29,10 +29,11 @@ namespace FluentValidation.Validators {
 
 		public IValidationContext ParentContext { get; }
 		public PropertyRule Rule { get; }
-		
-		public string ModelName { get; }
-		public string PropertyName => ModelName;
-		public string DisplayName => Rule.GetDisplayName(Container);
+		public ValidatorMetadata Metadata { get; }
+
+		public string ModelName => Metadata.PropertyName;
+		public string PropertyName => Metadata.PropertyName;
+		public string DisplayName => Rule.GetDisplayName(this);
 
 		[Obsolete("Use the Container property instead.")]
 		public object Instance => ParentContext.Model;
@@ -48,10 +49,10 @@ namespace FluentValidation.Validators {
 		object IValidationContext.Model => _propertyValueContainer.Value;
 		public object PropertyValue => _propertyValueContainer.Value;
 
-		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, string propertyName) {
+		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, ValidatorMetadata metadata) {
 			ParentContext = parentContext;
 			Rule = rule;
-			ModelName = propertyName;
+			Metadata = metadata;
 			_propertyValueContainer = new Lazy<object>( () => {
 				var value = rule.PropertyFunc(parentContext.Model);
 				if (rule.Transformer != null) value = rule.Transformer(value);
@@ -59,10 +60,10 @@ namespace FluentValidation.Validators {
 			});
 		}
 
-		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, string propertyName, object propertyValue) {
+		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, ValidatorMetadata metadata, object propertyValue) {
 			ParentContext = parentContext;
 			Rule = rule;
-			ModelName = propertyName;
+			Metadata = metadata;
 			_propertyValueContainer = new Lazy<object>(() => propertyValue);
 		}
 

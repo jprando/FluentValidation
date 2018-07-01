@@ -42,7 +42,7 @@ namespace FluentValidation.Mvc {
 				};
 
 				var fakeParentContext = new ValidationContext(container);
-				var context = new PropertyValidatorContext(fakeParentContext, fakeRule, Metadata.PropertyName);
+				var context = new PropertyValidatorContext(fakeParentContext, fakeRule, new ValidatorMetadata(Metadata.PropertyName));
 				var result = Validator.Validate(context);
 
 				foreach (var failure in result) {

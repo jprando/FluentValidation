@@ -284,6 +284,7 @@ namespace FluentValidation.Tests {
 
 		[Fact]
 		public void RuleSet_can_be_used_inside_condition() {
+
 			var validator = new TestValidator();
 
 			validator.When(x => x.Id > 0, () => { validator.RuleSet("foo", () => { validator.RuleFor(x => x.Forename).NotNull(); }); });

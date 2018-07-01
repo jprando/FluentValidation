@@ -44,7 +44,7 @@ namespace FluentValidation.Internal {
 				propertyName = InferPropertyName(Rule.Expression);
 			}
 
-			var propertyContext = new PropertyValidatorContext(context, Rule, propertyName);
+			var propertyContext = new PropertyValidatorContext(context, Rule, Metadata.Clone(propertyName));
 
 			if (Worker is IDelegatingValidator delegatingValidator && !delegatingValidator.CheckCondition(propertyContext.ParentContext)) {
 				// Condition failed. Return immediately. 
@@ -67,7 +67,7 @@ namespace FluentValidation.Internal {
 				newContext.PropertyChain.Add(propertyName);
 				newContext.PropertyChain.AddIndexer(count);
 
-				var newPropertyContext = new PropertyValidatorContext(newContext, Rule, newContext.PropertyChain.ToString(), v);
+				var newPropertyContext = new PropertyValidatorContext(newContext, Rule, Metadata.Clone(newContext.PropertyChain.ToString()), v);
 
 				await Worker.ValidateAsync(newPropertyContext, cancellation);
 				results.AddRange(newContext.Failures);
@@ -89,7 +89,7 @@ namespace FluentValidation.Internal {
 				propertyName = InferPropertyName(Rule.Expression);
 			}
 
-			var propertyContext = new PropertyValidatorContext(context, Rule, propertyName);
+			var propertyContext = new PropertyValidatorContext(context, Rule, Metadata.Clone(propertyName));
 			var results = new List<ValidationFailure>();
 			var delegatingValidator = Worker as IDelegatingValidator;
 			if (delegatingValidator == null || delegatingValidator.CheckCondition(propertyContext.ParentContext)) {
@@ -107,7 +107,7 @@ namespace FluentValidation.Internal {
 						newContext.PropertyChain.Add(propertyName);
 						newContext.PropertyChain.AddIndexer(count++);
 
-						var newPropertyContext = new PropertyValidatorContext(newContext, Rule, newContext.PropertyChain.ToString(), element);
+						var newPropertyContext = new PropertyValidatorContext(newContext, Rule, Metadata.Clone(newContext.PropertyChain.ToString()), element);
 						Worker.Validate(newPropertyContext);
 						results.AddRange(newContext.Failures);
 					}

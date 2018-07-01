@@ -64,7 +64,7 @@ namespace FluentValidation.Tests {
 		public void Should_store_property_to_compare() {
 			var validator = new TestValidator { v => v.RuleFor(x => x.Forename).Equal(x => x.Surname) };
 			var descriptor = validator.CreateDescriptor();
-			var propertyValidator = descriptor.GetValidatorsForMember("Forename").Cast<EqualValidator>().Single();
+			var propertyValidator = descriptor.GetValidatorsForMember("Forename").Select(x => x.Worker).Cast<EqualValidator>().Single();
 
 			propertyValidator.MemberToCompare.ShouldEqual(typeof(Person).GetProperty("Surname"));
 		}
@@ -73,7 +73,7 @@ namespace FluentValidation.Tests {
 		public void Should_store_comparison_type() {
 			var validator = new TestValidator { v => v.RuleFor(x => x.Surname).Equal("Foo") };
 			var descriptor = validator.CreateDescriptor();
-			var propertyValidator = descriptor.GetValidatorsForMember("Surname").Cast<EqualValidator>().Single();
+			var propertyValidator = descriptor.GetValidatorsForMember("Surname").Select(x => x.Worker).Cast<EqualValidator>().Single();
 
 			propertyValidator.Comparison.ShouldEqual(Comparison.Equal);
 		}

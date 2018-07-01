@@ -87,7 +87,7 @@ namespace FluentValidation.Tests {
 		[Fact]
 		public void Extracts_property_from_expression() {
 			var validator = new TestValidator(v => v.RuleFor(x => x.Id).LessThan(x => x.AnotherInt));
-			var propertyValidator = validator.CreateDescriptor().GetValidatorsForMember("Id").OfType<LessThanValidator>().Single();
+			var propertyValidator = validator.CreateDescriptor().GetValidatorsForMember("Id").Select(x => x.Worker).OfType<LessThanValidator>().Single();
 			propertyValidator.MemberToCompare.ShouldEqual(typeof(Person).GetProperty("AnotherInt"));
 		}
 
