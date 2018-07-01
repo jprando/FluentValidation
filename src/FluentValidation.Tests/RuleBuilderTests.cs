@@ -59,7 +59,7 @@ namespace FluentValidation.Tests {
 		public void Adding_a_validator_should_store_validator() {
 			var validator = new TestPropertyValidator();
 			builder.SetValidator(validator);
-			builder.Rule.CurrentValidator.ShouldBeTheSameAs(validator);
+			builder.Rule.CurrentValidator.Worker.ShouldBeTheSameAs(validator);
 		}
 
 		[Fact]
@@ -123,7 +123,7 @@ namespace FluentValidation.Tests {
 		public void Calling_when_should_replace_current_validator_with_predicate_validator() {
 			var validator = new TestPropertyValidator();
 			builder.SetValidator(validator).When(x => true);
-			builder.Rule.CurrentValidator.ShouldBe<DelegatingValidator>();
+			builder.Rule.CurrentValidator.Worker.ShouldBe<DelegatingValidator>();
 
 			var predicateValidator = (DelegatingValidator)builder.Rule.CurrentValidator.Worker;
 			predicateValidator.InnerValidator.ShouldBeTheSameAs(validator);
@@ -133,7 +133,7 @@ namespace FluentValidation.Tests {
 		public void Calling_when_async_should_replace_current_validator_with_predicate_validator() {
 			var validator = new TestPropertyValidator();
 			builder.SetValidator(validator).WhenAsync(async (x,c) => true);
-			builder.Rule.CurrentValidator.ShouldBe<DelegatingValidator>();
+			builder.Rule.CurrentValidator.Worker.ShouldBe<DelegatingValidator>();
 
 			var predicateValidator = (DelegatingValidator) builder.Rule.CurrentValidator.Worker;
 			predicateValidator.InnerValidator.ShouldBeTheSameAs(validator);
@@ -240,19 +240,23 @@ namespace FluentValidation.Tests {
 			var builder = new RuleBuilder<Person, Address>(PropertyRule.Create<Person, Address>(x => x.Address),null);
 			builder.SetValidator(person => new NoopAddressValidator());
 
-			builder.Rule.Validators.OfType<ChildValidatorAdaptor>().Single().ValidatorType.ShouldEqual(typeof(NoopAddressValidator));
+			builder.Rule.Validators.Select(x => x.Worker).OfType<ChildValidatorAdaptor>().Single().ValidatorType.ShouldEqual(typeof(NoopAddressValidator));
 		}
 
 		class NoopAddressValidator : AbstractValidator<Address> {
 		}
 
-		class TestPropertyValidator : PropertyValidator {
-			public TestPropertyValidator() : base(new LanguageStringSource(nameof(NotNullValidator))) {
-				
+		class TestPropertyValidator : IValidationWorker {
+			public bool Validate(IValidationContext context) {
+				return true;
 			}
 
-			protected override bool IsValid(PropertyValidatorContext context) {
+			public async Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
 				return true;
+			}
+
+			public bool ShouldValidateAsync(IValidationContext context) {
+				return false;
 			}
 		}
 	}

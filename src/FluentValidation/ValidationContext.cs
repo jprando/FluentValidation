@@ -47,13 +47,7 @@ namespace FluentValidation {
 		/// <summary>
 		/// The object to validate
 		/// </summary>
-		[Obsolete("Use the Model property instead.")]
-		public new T InstanceToValidate => Model;
-
-		/// <summary>
-		/// The object to validate
-		/// </summary>
-		public new T Model => (T)base.Model;
+		public new T InstanceToValidate => (T)base.InstanceToValidate;
 	}
 
 	/// <summary>
@@ -73,17 +67,17 @@ namespace FluentValidation {
 		/// <summary>
 		/// Object being validated (either the root object, or a property value)
 		/// </summary>
-		object Model { get; }
+		object PropertyValue { get; }
 		
 		/// <summary>
 		/// The name of the model (typically the property name)
 		/// </summary>
-		string ModelName { get; }
+		string PropertyName { get; }
 		
 		/// <summary>
 		/// The containing object. If a property is being validated, this will contain the root/parent object. 
 		/// </summary>
-		object Container { get; }
+		object InstanceToValidate { get; }
 		
 		/// <summary>
 		/// Selector
@@ -131,7 +125,7 @@ namespace FluentValidation {
 		/// <param name="validatorSelector"></param>
 		public ValidationContext(object instanceToValidate, PropertyChain propertyChain, IValidatorSelector validatorSelector) {
 			PropertyChain = new PropertyChain(propertyChain);
-			Model = instanceToValidate;
+			InstanceToValidate = instanceToValidate;
 			Selector = validatorSelector;
 		}
 
@@ -140,19 +134,14 @@ namespace FluentValidation {
 		/// </summary>
 		public PropertyChain PropertyChain { get; private set; }
 
-		/// <summary>
-		/// Object being validated
-		/// </summary>
-		public object Model { get; }
-		
-		string IValidationContext.ModelName => string.Empty;
-		object IValidationContext.Container => null;
+		string IValidationContext.PropertyName => string.Empty;
+		object IValidationContext.PropertyValue => null;
 
 		/// <summary>
 		/// Object being validated
 		/// </summary>
-		[Obsolete("Use the Model property instead.")]
-		public object InstanceToValidate => Model;
+		public object InstanceToValidate { get; }
+
 		/// <summary>
 		/// Selector
 		/// </summary>
@@ -197,7 +186,7 @@ namespace FluentValidation {
 		/// <param name="selector"></param>
 		/// <returns></returns>
 		public ValidationContext Clone(PropertyChain chain = null, object instanceToValidate = null, IValidatorSelector selector = null) {
-			return new ValidationContext(instanceToValidate ?? Model, chain ?? PropertyChain, selector ?? this.Selector) {
+			return new ValidationContext(instanceToValidate ?? InstanceToValidate, chain ?? PropertyChain, selector ?? Selector) {
 				RootContextData = RootContextData
 			};
 		}
@@ -246,7 +235,7 @@ namespace FluentValidation {
 		/// <param name="errorMessage">The error message</param>
 		public static void AddFailure(this IValidationContext context, string errorMessage) {
 			errorMessage.Guard("An error message must be specified when calling AddFailure.", nameof(errorMessage));
-			context.AddFailure(context.ModelName, errorMessage);
+			context.AddFailure(context.PropertyName, errorMessage);
 		}
 	}
 }

@@ -35,11 +35,15 @@
 		}
 
 		public bool Validate(IValidationContext context) {
-			return _validator(context.Model).Validate(context).IsValid;
+			var ctx = (PropertyValidatorContext) context;
+			var validator = _validator(context.InstanceToValidate);
+			
+			return validator.Validate((ValidationContext)ctx.ParentContext).IsValid;
 		}
 
 		public async Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
-			var result = await _validator(context.Model).ValidateAsync(context, cancellationToken);
+			var ctx = (PropertyValidatorContext) context;
+			var result = await _validator(context.InstanceToValidate).ValidateAsync((ValidationContext)ctx.ParentContext, cancellationToken);
 			return result.IsValid;
 		}
 

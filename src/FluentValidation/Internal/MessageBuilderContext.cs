@@ -26,9 +26,6 @@
 
 		public string DisplayName => _innerContext.DisplayName;
 
-		[Obsolete("Use Container instead.")]
-		public object Instance => _innerContext.Instance;
-
 		public MessageFormatter MessageFormatter => _innerContext.MessageFormatter;
 
 		public object PropertyValue => _innerContext.PropertyValue;
@@ -44,10 +41,8 @@
 		public Dictionary<string, object> RootContextData => _innerContext.RootContextData;
 		public PropertyChain PropertyChain => _innerContext.PropertyChain;
 
-		public object Container => _innerContext.Container;
+		public object InstanceToValidate => _innerContext.InstanceToValidate;
 
-		object IValidationContext.Model => _innerContext.PropertyValue;
-		string IValidationContext.ModelName => _innerContext.ModelName;
 		IValidatorSelector IValidationContext.Selector => _innerContext.Selector;
 		bool IValidationContext.IsAsync => _innerContext.IsAsync;
 

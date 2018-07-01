@@ -270,7 +270,7 @@ namespace FluentValidation.Internal {
 
 			if (hasAnyFailure) {
 				// Callback if there has been at least one property validator failed.
-				OnFailure(context.Model);
+				OnFailure(context.InstanceToValidate);
 			}
 			else {
 				foreach (var dependentRule in DependentRules) {
@@ -341,7 +341,7 @@ namespace FluentValidation.Internal {
 				//if StopOnFirstFailure triggered then we exit
 				if (fastExit && hasFailures) {
 					// Callback if there has been at least one property validator failed.
-					OnFailure(context.Model);
+					OnFailure(context.InstanceToValidate);
 					return false;
 				}
 
@@ -351,7 +351,7 @@ namespace FluentValidation.Internal {
 				if (asyncValidators.Count == 0) {
 					if (hasFailures) {
 						// Callback if there has been at least one property validator failed.
-						OnFailure(context.Model);
+						OnFailure(context.InstanceToValidate);
 						return false;
 					}
 
@@ -383,7 +383,7 @@ namespace FluentValidation.Internal {
 						cancellationToken: cancellation
 					).Then(async () => {
 							if (hasFailures) {
-								OnFailure(context.Container);
+								OnFailure(context.InstanceToValidate);
 								return false;
 							}
 							else

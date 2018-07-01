@@ -37,7 +37,7 @@
 		/// </summary>
 		/// <param name="context">Current validation context</param>
 		public virtual bool Validate(IValidationContext context) {
-			_action((T) context.Model, context);
+			_action((T) context.PropertyValue, context);
 			return !((PropertyValidatorContext) context).HasFailures;
 		}
 
@@ -48,7 +48,7 @@
 		/// <param name="cancellationToken">Cancellation context</param>
 		/// <returns></returns>
 		public virtual async Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
-			await _asyncAction((T)context.Model, context, cancellationToken);
+			await _asyncAction((T)context.PropertyValue, context, cancellationToken);
 			return !((PropertyValidatorContext) context).HasFailures;
 		}
 

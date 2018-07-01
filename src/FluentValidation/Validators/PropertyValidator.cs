@@ -162,6 +162,10 @@ namespace FluentValidation.Validators {
 				ErrorMessageSource = metadata.ErrorMessageSource;
 			}
 
+			if (metadata.CustomStateProvider != null) {
+				CustomStateProvider = metadata.CustomStateProvider;
+			}
+
 			Severity = metadata.Severity;
 		}
 

@@ -89,6 +89,7 @@ namespace FluentValidation.Internal {
 		}
 	}
 
+	[Obsolete]
 	internal interface IExposesParentValidator<T> {
 		IValidator<T> ParentValidator { get; }
 	}

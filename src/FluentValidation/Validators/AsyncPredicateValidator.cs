@@ -27,7 +27,7 @@ namespace FluentValidation.Validators {
 		/// <param name="cancellation"></param>
 		/// <returns></returns>
 		protected override Task<bool> IsValidAsync(PropertyValidatorContext context, CancellationToken cancellation) {
-			return predicate(context.Instance, context.PropertyValue, context, cancellation);
+			return predicate(context.InstanceToValidate, context.PropertyValue, context, cancellation);
 		}
 	}
 }

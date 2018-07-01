@@ -34,6 +34,7 @@
 				_errorCodeSource = _errorCodeSource,
 				_errorSource = _errorSource,
 				Severity = Severity,
+				CustomStateProvider = CustomStateProvider
 			};
 		}
 	}

@@ -31,13 +31,10 @@ namespace FluentValidation.Validators {
 		public PropertyRule Rule { get; }
 		public ValidatorMetadata Metadata { get; }
 
-		public string ModelName => Metadata.PropertyName;
 		public string PropertyName => Metadata.PropertyName;
 		public string DisplayName => Rule.GetDisplayName(this);
 
-		[Obsolete("Use the Container property instead.")]
-		public object Instance => ParentContext.Model;
-		public object Container => ParentContext.Model;
+		public object InstanceToValidate => ParentContext.InstanceToValidate;
 
 		public Dictionary<string, object> RootContextData => ParentContext.RootContextData;
 		public PropertyChain PropertyChain => ParentContext.PropertyChain;
@@ -46,15 +43,15 @@ namespace FluentValidation.Validators {
 
 		//Lazily load the property value
 		//to allow the delegating validator to cancel validation before value is obtained
-		object IValidationContext.Model => _propertyValueContainer.Value;
 		public object PropertyValue => _propertyValueContainer.Value;
 
 		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, ValidatorMetadata metadata) {
+			metadata.Guard("ValidatorMetadata must be specified", nameof(metadata));
 			ParentContext = parentContext;
 			Rule = rule;
 			Metadata = metadata;
 			_propertyValueContainer = new Lazy<object>( () => {
-				var value = rule.PropertyFunc(parentContext.Model);
+				var value = rule.PropertyFunc(parentContext.InstanceToValidate);
 				if (rule.Transformer != null) value = rule.Transformer(value);
 				return value;
 			});

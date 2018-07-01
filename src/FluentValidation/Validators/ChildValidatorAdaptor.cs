@@ -59,7 +59,7 @@ namespace FluentValidation.Validators {
 
 		public virtual IValidator GetValidator(PropertyValidatorContext context) {
 			context.Guard("Cannot pass a null context to GetValidator", nameof(context));
-			return _validatorProvider(context.Instance);
+			return _validatorProvider(context.InstanceToValidate);
 		}
 
 		protected ValidationContext CreateNewValidationContextForChildValidator(object instanceToValidate, PropertyValidatorContext context) {

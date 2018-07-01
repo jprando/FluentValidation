@@ -63,7 +63,7 @@ namespace FluentValidation.Internal {
 			var results = new List<ValidationFailure>();
 
 			IEnumerable<Task> validators = collectionPropertyValue.Select(async (v, count) => {
-				var newContext = ctx.CloneForChildCollectionValidator(context.Model);
+				var newContext = ctx.CloneForChildCollectionValidator(context.InstanceToValidate);
 				newContext.PropertyChain.Add(propertyName);
 				newContext.PropertyChain.AddIndexer(count);
 
@@ -103,7 +103,7 @@ namespace FluentValidation.Internal {
 					}
 
 					foreach (var element in collectionPropertyValue) {
-						var newContext = ctx.CloneForChildCollectionValidator(context.Model);
+						var newContext = ctx.CloneForChildCollectionValidator(context.InstanceToValidate);
 						newContext.PropertyChain.Add(propertyName);
 						newContext.PropertyChain.AddIndexer(count++);
 

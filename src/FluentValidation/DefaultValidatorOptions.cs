@@ -92,9 +92,9 @@ namespace FluentValidation {
 		/// <returns></returns>
 		public static IRuleBuilderOptions<T, TProperty> WithMessage<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, string> messageProvider) {
 			messageProvider.Guard("A messageProvider must be provided.", nameof(messageProvider));
-			Func<object, string> newFunc = x => messageProvider((T)x);
+			
 			return rule.Configure(config => {
-				config.CurrentValidator.Metadata.ErrorMessageSource = new LazyStringSource(newFunc);
+				config.CurrentValidator.Metadata.ErrorMessageSource = new LazyStringSource(ctx => messageProvider((T) ctx.InstanceToValidate));
 			});
 		}
 
@@ -107,14 +107,12 @@ namespace FluentValidation {
 		public static IRuleBuilderOptions<T, TProperty> WithMessage<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, TProperty, string> messageProvider) {
 			messageProvider.Guard("A messageProvider must be provided.", nameof(messageProvider));
 
+			string GetMessage(IValidationContext context) {
+				return messageProvider((T) context.InstanceToValidate, (TProperty) context.PropertyValue);
+			}
+
 			return rule.Configure(config => {
-
-				Func<IValidationContext, string> newFunc = context => {
-					return messageProvider((T)context.Container, (TProperty)context.Model);
-				};
-
-
-				config.CurrentValidator.Metadata.ErrorMessageSource = new LazyStringSource(newFunc);
+				config.CurrentValidator.Metadata.ErrorMessageSource = new LazyStringSource(GetMessage);
 			});
 		}
 
@@ -160,7 +158,7 @@ namespace FluentValidation {
 			predicate.Guard("A predicate must be specified when calling When.", nameof(predicate));
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			return rule.Configure(config => {
-				config.ApplyCondition(ctx => predicate((T)ctx.Container), applyConditionTo);
+				config.ApplyCondition(ctx => predicate((T)ctx.InstanceToValidate), applyConditionTo);
 			});
 		}
 
@@ -190,7 +188,7 @@ namespace FluentValidation {
 			predicate.Guard("A predicate must be specified when calling WhenAsync.", nameof(predicate));
 			// Default behaviour for When/Unless as of v1.3 is to apply the condition to all previous validators in the chain.
 			return rule.Configure(config => {
-				config.ApplyAsyncCondition((ctx, ct) => predicate((T)ctx.Container, ct), applyConditionTo);
+				config.ApplyAsyncCondition((ctx, ct) => predicate((T)ctx.InstanceToValidate, ct), applyConditionTo);
 			});
 		}
 
@@ -217,7 +215,7 @@ namespace FluentValidation {
 			// This overload supports RuleFor().SetCollectionValidator() (which returns IRuleBuilderOptions<T, IEnumerable<TElement>>)
 			predicate.Guard("Cannot pass null to Where.", nameof(predicate));
 			return rule.Configure(cfg => {
-				cfg.ApplyCondition(ctx => predicate((TCollectionElement)ctx.Model));
+				cfg.ApplyCondition(ctx => predicate((TCollectionElement)ctx.PropertyValue));
 			});
 		}
 		
@@ -281,10 +279,8 @@ namespace FluentValidation {
 		public static IRuleBuilderOptions<T, TProperty> WithName<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, string> nameProvider) {
 			nameProvider.Guard("A nameProvider WithName.", nameof(nameProvider));
 
-			Func<object, string> newFunc = x => nameProvider((T)x);
-
 			return rule.Configure(config => {
-				config.DisplayName = new LazyStringSource(newFunc);
+				config.DisplayName = new LazyStringSource(context => nameProvider((T) context.InstanceToValidate));
 			});
 		}
 
@@ -325,7 +321,7 @@ namespace FluentValidation {
 		/// <returns></returns>
 		public static IRuleBuilderOptions<T, TProperty> WithState<T, TProperty>(this IRuleBuilderOptions<T, TProperty> rule, Func<T, object> stateProvider) {
 			stateProvider.Guard("A lambda expression must be passed to WithState", nameof(stateProvider));
-			var wrapper = new Func<PropertyValidatorContext, object>(ctx => stateProvider((T) ctx.Instance));
+			var wrapper = new Func<PropertyValidatorContext, object>(ctx => stateProvider((T) ctx.InstanceToValidate));
 			return rule.Configure(config => config.CurrentValidator.Metadata.CustomStateProvider = wrapper);
 		}
 
@@ -341,7 +337,7 @@ namespace FluentValidation {
 			stateProvider.Guard("A lambda expression must be passed to WithState", nameof(stateProvider));
 
 			var wrapper = new Func<PropertyValidatorContext, object>(ctx => {
-				return stateProvider((T) ctx.Container, (TProperty) ctx.PropertyValue);
+				return stateProvider((T) ctx.InstanceToValidate, (TProperty) ctx.PropertyValue);
 			});
 
 			return rule.Configure(config => config.CurrentValidator.Metadata.CustomStateProvider = wrapper);
