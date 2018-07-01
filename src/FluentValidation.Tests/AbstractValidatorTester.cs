@@ -42,11 +42,25 @@ namespace FluentValidation.Tests {
 			validator.RuleFor(x => x.Forename).NotNull();
 			validator.Validate(new Person {Forename = "Jeremy"}).IsValid.ShouldBeTrue();
 		}
+		
+		[Fact]
+		public async Task When_the_Validators_pass_then_the_validatorRunner_should_return_true_async() {
+			validator.RuleFor(x => x.Forename).MustAsync(async (x, c) => x != null);
+			var result = await validator.ValidateAsync(new Person {Forename = "Jeremy"});
+			result.IsValid.ShouldBeTrue();
+		}
 
 		[Fact]
 		public void When_the_validators_fail_then_validatorrunner_should_return_false() {
 			validator.RuleFor(x => x.Forename).NotNull();
 			validator.Validate(new Person()).IsValid.ShouldBeFalse();
+		}
+		
+		[Fact]
+		public async Task When_the_validators_fail_then_validatorrunner_should_return_false_async() {
+			validator.RuleFor(x => x.Forename).MustAsync(async (x, c) => x != null);
+			var result = await validator.ValidateAsync(new Person());
+			result.IsValid.ShouldBeFalse();
 		}
 
 		[Fact]

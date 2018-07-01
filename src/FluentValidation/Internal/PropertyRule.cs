@@ -351,23 +351,44 @@ namespace FluentValidation.Internal {
 
 					return RunDependentRulesAsync(context, cancellation);
 				}
-
+				
+				hasFailures = false;
+				
 				//Then call asyncronous validators in non-blocking way
-				var resultTasks = asyncValidators
-					.Select(v => v.ValidateAsync(context, propertyName, cancellation))
-					.IterateAsync(cancellation, breakCondition: t => cascade == CascadeMode.StopOnFirstFailure && !t.Result);
+				var validations = asyncValidators
+					.Select(v => v.ValidateAsync(context, propertyName, cancellation)
+						//this is thread safe because tasks are launched sequencially
+						.Then(success => {
+							// Manipulating hasFailures from inside the continuation is nasty
+							// but it should be safe as everything is run sequentually.
+							// Ideally, TaskHelpers.Iterate would return all the inner task results but it doesn't :(
+							if (!success) {
+								hasFailures = true;
+							}
+							
+							return success;
+						}, runSynchronously: true)
+					);
 
-				return resultTasks.Then(runSynchronously: true, continuation: tasks => {
-					bool failed = tasks.Any(x => x.IsCanceled || x.IsFaulted || x.Result == false);
+				var stupidlyComplicatedTask = 
+					TaskHelpers.Iterate(
+						validations,
+						breakCondition: _ => cascade == CascadeMode.StopOnFirstFailure && hasFailures,
+						cancellationToken: cancellation
+					).Then(async () => {
+							if (hasFailures) {
+								OnFailure(context.Container);
+							}
+							else
+							{
+								await RunDependentRulesAsync(context, cancellation);
+							}
+						},
+						runSynchronously: true
+					);
 
-					if (failed) {
-						OnFailure(context.Model);
-						return TaskHelpers.Completed();
-						//return tasks;
-					}
+				return stupidlyComplicatedTask;
 
-					return RunDependentRulesAsync(context, cancellation);
-				});
 			}
 			catch (Exception ex) {
 				return TaskHelpers.FromError(ex);
