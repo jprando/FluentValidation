@@ -137,13 +137,16 @@ namespace FluentValidation.Validators {
 			set => _errorCodeSource = value ?? throw new ArgumentNullException(nameof(value));
 		}
 
-		void IValidationWorker.Validate(IValidationContext context) {
-			Validate((PropertyValidatorContext) context).ForEach(context.AddFailure);
+		bool IValidationWorker.Validate(IValidationContext context) {
+			var failures = Validate((PropertyValidatorContext) context).ToList();
+			failures.ForEach(context.AddFailure);
+			return !failures.Any();
 		}
 
-		async Task IValidationWorker.ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
-			var failures = await ValidateAsync((PropertyValidatorContext) context, cancellationToken);
+		async Task<bool> IValidationWorker.ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			var failures = (await ValidateAsync((PropertyValidatorContext) context, cancellationToken)).ToList();
 			failures.ForEach(context.AddFailure);
+			return !failures.Any();
 		}
 
 		public virtual bool ShouldValidateAsync(IValidationContext context) {

@@ -228,7 +228,7 @@ namespace FluentValidation.Internal {
 		/// </summary>
 		/// <param name="context">Validation Context</param>
 		/// <returns>A collection of validation failures</returns>
-		public virtual void Validate(IValidationContext context) {
+		public virtual bool Validate(IValidationContext context) {
 			string displayName = GetDisplayName(context.Model);
 
 			if (PropertyName == null && displayName == null) {
@@ -242,7 +242,7 @@ namespace FluentValidation.Internal {
 			// Ensure that this rule is allowed to run. 
 			// The validatselector has the opportunity to veto this before any of the validators execute.
 			if (!context.Selector.CanExecute(this, propertyName, context)) {
-				return;
+				return true;
 			}
 
 			var cascade = _cascadeModeThunk();
@@ -274,9 +274,15 @@ namespace FluentValidation.Internal {
 			}
 			else {
 				foreach (var dependentRule in DependentRules) {
-					dependentRule.Validate(context);
+					bool success = dependentRule.Validate(context);
+					
+					if (!success) {
+						hasAnyFailure = true;
+					}
 				}
 			}
+
+			return !hasAnyFailure;
 		}
 
 		/// <summary>
@@ -285,7 +291,7 @@ namespace FluentValidation.Internal {
 		/// <param name="context">Validation Context</param>
 		/// <param name="cancellation"></param>
 		/// <returns>A collection of validation failures</returns>
-		public virtual Task ValidateAsync(IValidationContext context, CancellationToken cancellation) {
+		public virtual async Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellation) {
 			try {
 				if (!context.IsAsync) {
 					context.RootContextData["__FV_IsAsyncExecution"] = true;
@@ -305,7 +311,7 @@ namespace FluentValidation.Internal {
 				// Ensure that this rule is allowed to run. 
 				// The validatselector has the opportunity to veto this before any of the validators execute.
 				if (!context.Selector.CanExecute(this, propertyName, context)) {
-					return TaskHelpers.Completed();
+					return true;
 				}
 
 				var cascade = _cascadeModeThunk();
@@ -316,7 +322,7 @@ namespace FluentValidation.Internal {
 				foreach (var validator in _validators.Where(v => !v.Worker.ShouldValidateAsync(context))) {
 
 					if (cancellation.IsCancellationRequested) {
-						return TaskHelpers.Canceled();
+						return await TaskHelpers.Canceled<bool>();
 					}
 
 					bool success = validator.Validate(context, propertyName);
@@ -336,7 +342,7 @@ namespace FluentValidation.Internal {
 				if (fastExit && hasFailures) {
 					// Callback if there has been at least one property validator failed.
 					OnFailure(context.Model);
-					return TaskHelpers.Completed();
+					return false;
 				}
 
 				var asyncValidators = _validators.Where(v => v.ShouldValidateAsync(context)).ToList();
@@ -346,10 +352,10 @@ namespace FluentValidation.Internal {
 					if (hasFailures) {
 						// Callback if there has been at least one property validator failed.
 						OnFailure(context.Model);
-						return TaskHelpers.Completed();
+						return false;
 					}
 
-					return RunDependentRulesAsync(context, cancellation);
+					return await RunDependentRulesAsync(context, cancellation);
 				}
 				
 				hasFailures = false;
@@ -378,20 +384,21 @@ namespace FluentValidation.Internal {
 					).Then(async () => {
 							if (hasFailures) {
 								OnFailure(context.Container);
+								return false;
 							}
 							else
 							{
-								await RunDependentRulesAsync(context, cancellation);
+								return await RunDependentRulesAsync(context, cancellation);
 							}
 						},
 						runSynchronously: true
 					);
 
-				return stupidlyComplicatedTask;
+				return await stupidlyComplicatedTask;
 
 			}
 			catch (Exception ex) {
-				return TaskHelpers.FromError(ex);
+				return await TaskHelpers.FromError<bool>(ex);
 			}
 		}
 
@@ -399,9 +406,17 @@ namespace FluentValidation.Internal {
 			return context.IsAsync;
 		}
 
-		private Task RunDependentRulesAsync(IValidationContext context, CancellationToken cancellation) {
-			var validations = DependentRules.Select(v => v.ValidateAsync(context, cancellation));
-			return TaskHelpers.Iterate(validations, cancellationToken: cancellation);
+		private async Task<bool> RunDependentRulesAsync(IValidationContext context, CancellationToken cancellation) {
+			bool hasFailures = false;
+			
+			var validations = DependentRules.Select(v => v.ValidateAsync(context, cancellation).Then(r => {
+				if (!r) {
+					hasFailures = true;
+				}
+			}));
+			
+			await TaskHelpers.Iterate(validations, cancellationToken: cancellation);
+			return hasFailures;
 		}
 
 		/// <summary>

@@ -69,24 +69,28 @@ namespace FluentValidation.Validators {
 //			set => InnerValidator.Severity = value;
 //		}
 
-		public void Validate(IValidationContext context) {
+		public bool Validate(IValidationContext context) {
 			if (_condition(context)) {
-				InnerValidator.Validate(context);
+				return InnerValidator.Validate(context);
 			}
+
+			return true;
 		}
 
-		public async Task ValidateAsync(IValidationContext context, CancellationToken cancellation) {
+		public async Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellation) {
 			if (!_condition(context))
-				return;
+				return true;
 
 			if (_asyncCondition == null)
-				await InnerValidator.ValidateAsync(context, cancellation);
+				return await InnerValidator.ValidateAsync(context, cancellation);
 
 			bool shouldValidate = await _asyncCondition(context, cancellation);
 
 			if (shouldValidate) {
-				await InnerValidator.ValidateAsync(context, cancellation);
+				return await InnerValidator.ValidateAsync(context, cancellation);
 			}
+
+			return true;
 		}
 
 		public bool SupportsStandaloneValidation => false;

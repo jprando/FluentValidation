@@ -60,23 +60,31 @@ namespace FluentValidation {
 	/// Validation Context
 	/// </summary>
 	public interface IValidationContext {
+		/// <summary>
+		/// Additional information stored in the context.
+		/// </summary>
 		Dictionary<string, object> RootContextData { get; }
+		
 		/// <summary>
 		/// Property chain
 		/// </summary>
 		PropertyChain PropertyChain { get; }
+		
 		/// <summary>
 		/// Object being validated (either the root object, or a property value)
 		/// </summary>
 		object Model { get; }
+		
 		/// <summary>
 		/// The name of the model (typically the property name)
 		/// </summary>
 		string ModelName { get; }
+		
 		/// <summary>
 		/// The containing object. If a property is being validated, this will contain the root/parent object. 
 		/// </summary>
 		object Container { get; }
+		
 		/// <summary>
 		/// Selector
 		/// </summary>

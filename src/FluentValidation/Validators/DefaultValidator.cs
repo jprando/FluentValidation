@@ -8,7 +8,7 @@
 		/// Performs validation.
 		/// </summary>
 		/// <param name="context">Current validation context</param>
-		void Validate(IValidationContext context);
+		bool Validate(IValidationContext context);
 
 		/// <summary>
 		/// Performs validation asynchronously.
@@ -16,7 +16,7 @@
 		/// <param name="context">Current validation context/</param>
 		/// <param name="cancellationToken">Cancellation context</param>
 		/// <returns></returns>
-		Task ValidateAsync(IValidationContext context, CancellationToken cancellationToken);
+		Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Determines whether validation should be run asynchronously.
@@ -34,14 +34,13 @@
 			_validator = validator;
 		}
 
-		public void Validate(IValidationContext context) {
-			// don't need to check the result. Errors will be collected in the context.
-			_validator(context.Model).Validate(context);
+		public bool Validate(IValidationContext context) {
+			return _validator(context.Model).Validate(context).IsValid;
 		}
 
-		public Task ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
-			// don't need to check the result. Errors will be collected in the context.
-			return _validator(context.Model).ValidateAsync(context, cancellationToken);
+		public async Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			var result = await _validator(context.Model).ValidateAsync(context, cancellationToken);
+			return result.IsValid;
 		}
 
 		public bool ShouldValidateAsync(IValidationContext context) {

@@ -19,6 +19,7 @@
 namespace FluentValidation.Validators {
 	using System;
 	using System.Collections.Generic;
+	using System.Linq;
 	using System.Linq.Expressions;
 	using System.Threading;
 	using System.Threading.Tasks;
@@ -57,13 +58,16 @@ namespace FluentValidation.Validators {
 
 		public Severity Severity { get; set; }
 
-		public virtual void Validate(IValidationContext context) {
-			Validate((PropertyValidatorContext)context).ForEach(context.AddFailure);
+		public virtual bool Validate(IValidationContext context) {
+			var result = Validate((PropertyValidatorContext)context).ToList();
+			result.ForEach(context.AddFailure);
+			return !result.Any();
 		}
 
-		public virtual async Task ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
-			var result = await ValidateAsync((PropertyValidatorContext) context, cancellationToken);
+		public virtual async Task<bool> ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			var result = (await ValidateAsync((PropertyValidatorContext) context, cancellationToken)).ToList();
 			result.ForEach(context.AddFailure);
+			return !result.Any();
 		}
 
 		public virtual bool ShouldValidateAsync(IValidationContext context) {
