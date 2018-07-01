@@ -23,49 +23,15 @@ namespace FluentValidation.Internal {
 	using System.Collections.Generic;
 	using System.Linq;
 	using System.Linq.Expressions;
-	using System.Reflection;
 	using System.Threading;
 	using System.Threading.Tasks;
 	using Results;
 	using Validators;
 
 	/// <summary>
-	/// Rule definition for collection properties
-	/// </summary>
-	/// <typeparam name="TCollectionElement"></typeparam>
-	public class CollectionPropertyRule<TCollectionElement> : PropertyRule {
-		/// <summary>
-		/// Initializes new instance of the CollectionPropertyRule class
-		/// </summary>
-		/// <param name="member"></param>
-		/// <param name="propertyFunc"></param>
-		/// <param name="expression"></param>
-		/// <param name="cascadeModeThunk"></param>
-		/// <param name="typeToValidate"></param>
-		/// <param name="containerType"></param>
-		public CollectionPropertyRule(MemberInfo member, Func<object, object> propertyFunc, LambdaExpression expression, Func<CascadeMode> cascadeModeThunk, Type typeToValidate, Type containerType) : base(member, propertyFunc, expression, cascadeModeThunk, typeToValidate, containerType) {
-		}
-
-		/// <summary>
-		/// Creates a new property rule from a lambda expression.
-		/// </summary>
-		public static CollectionPropertyRule<TCollectionElement> Create<T>(Expression<Func<T, IEnumerable<TCollectionElement>>> expression, Func<CascadeMode> cascadeModeThunk) {
-			var member = expression.GetMember();
-			var compiled = expression.Compile();
-
-			return new CollectionPropertyRule<TCollectionElement>(member, compiled.CoerceToNonGeneric(), expression, cascadeModeThunk, typeof(TCollectionElement), typeof(T));
-		}
-
-		protected override RuleElement CreateRuleElement(IValidationWorker validator) {
-			return new CollectionRuleElement<TCollectionElement>(validator, new ValidatorMetadata(), this);
-		}
-	}
-
-	//todo: Should this be public? 
-	/// <summary>
 	/// Rule element for collection validators
 	/// </summary>
-	internal class CollectionRuleElement<T> : RuleElement {
+	public class CollectionRuleElement<T> : RuleElement {
 		public CollectionRuleElement(IValidationWorker worker, ValidatorMetadata metadata, PropertyRule rule) : base(worker, metadata, rule) {
 		}
 

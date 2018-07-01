@@ -19,6 +19,7 @@
 namespace FluentValidation {
 	using System;
 	using System.Collections.Generic;
+	using Internal;
 	using Validators;
 
 	/// <summary>
@@ -30,26 +31,46 @@ namespace FluentValidation {
 		/// </summary>
 		/// <param name="ruleBuilder">Rule builder</param>
 		/// <param name="validator">The validator to use</param>
-		[Obsolete("SetcollectionValidator is deprecated and will be removed in FluentValidation 9.0. Please inherit use RuleForEach(..).SetValidator() instead. For information on upgrading to FluentValidation 8, please see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
+		[Obsolete("SetCollectionValidator is deprecated and will be removed in FluentValidation 9.0. Please switch to using RuleForEach(..).SetValidator() instead. For information on upgrading to FluentValidation 8, please see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
 		public static IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetCollectionValidator<T, TCollectionElement>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, IValidator<TCollectionElement> validator) {
-			// Just delegate to the RuleForEach implementation to do the work.
-			return ruleBuilder.SetValidator(new ValidationWorkerWrapper(x => validator));
+			// Workaround as IRuleBuilder doesn't expose IConfigurable (only IRuleBuilderInitial/IRuleBuilderOptions do)
+			if (!(ruleBuilder is RuleBuilder<T, IEnumerable<TCollectionElement>> rb)) {
+				throw new InvalidOperationException("Cannot use SetCollectioValidator with custom rule builders");
+			}
+			
+			// Switch out the rule builder's element factory for the one that's usually used by RuleForEach.
+			var factory = rb.Rule.RuleElementFactory;
+			rb.Rule.RuleElementFactory = x => new CollectionRuleElement<TCollectionElement>(x, new ValidatorMetadata(), rb.Rule);
+			rb.SetValidator(new ValidationWorkerWrapper(x => validator));
+			// Reset the factory for any subsequent validator
+			rb.Rule.RuleElementFactory = factory;
+			return rb;
 		}
 
 		/// <summary>
 		/// Uses a provider to instantiate a validator instance to be associated with a collection
 		/// </summary>
 		/// <param name="ruleBuilder"></param>
-		/// <param name="validator"></param>
+		/// <param name="validatorFactory"></param>
 		/// <typeparam name="T"></typeparam>
 		/// <typeparam name="TCollectionElement"></typeparam>
 		/// <typeparam name="TValidator"></typeparam>
 		/// <returns></returns>
-		[Obsolete("SetcollectionValidator is deprecated and will be removed in FluentValidation 9.0. Please inherit use RuleForEach(..).SetValidator() instead. For information on upgrading to FluentValidation 8, please see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
-		public static IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetCollectionValidator<T, TCollectionElement, TValidator>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, Func<T, TValidator> validator)
+		[Obsolete("SetCollectionValidator is deprecated and will be removed in FluentValidation 9.0. Please switch to using RuleForEach(..).SetValidator() instead. For information on upgrading to FluentValidation 8, please see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
+		public static IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetCollectionValidator<T, TCollectionElement, TValidator>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, Func<T, TValidator> validatorFactory)
 			where TValidator : IValidator<TCollectionElement> {
-			// Just delegate to the RuleForEach implementation to do the work.
-			return ruleBuilder.SetValidator(new ValidationWorkerWrapper(x => validator((T) x)));
+			// Workaround as IRuleBuilder doesn't expose IConfigurable (only IRuleBuilderInitial/IRuleBuilderOptions do)
+			if (!(ruleBuilder is RuleBuilder<T, IEnumerable<TCollectionElement>> rb)) {
+				throw new InvalidOperationException("Cannot use SetCollectioValidator with custom rule builders");
+			}
+			
+			// Switch out the rule builder's element factory for the one that's usually used by RuleForEach.
+			var factory = rb.Rule.RuleElementFactory;
+			rb.Rule.RuleElementFactory = x => new CollectionRuleElement<TCollectionElement>(x, new ValidatorMetadata(), rb.Rule);
+			rb.SetValidator(new ValidationWorkerWrapper(x => validatorFactory((T) x)));
+			// Reset the factory for any subsequent validator
+			rb.Rule.RuleElementFactory = factory;
+			return rb;
 		}
 	}
 }

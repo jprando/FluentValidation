@@ -38,6 +38,7 @@ namespace FluentValidation.Internal {
 		string _propertyDisplayName;
 		string _propertyName;
 		private string[] _ruleSet = new string[0];
+		private Func<IValidationWorker, RuleElement> _ruleElementFactory;
 
 		/// <summary>
 		/// Property associated with this rule.
@@ -96,6 +97,14 @@ namespace FluentValidation.Internal {
 		public IEnumerable<RuleElement> Validators => _validators;
 
 		/// <summary>
+		/// Defines the factory used to create rule elements.
+		/// </summary>
+		public Func<IValidationWorker, RuleElement> RuleElementFactory {
+			get => _ruleElementFactory;
+			set => _ruleElementFactory = value ?? throw new ArgumentNullException("Cannot pass null to RuleElementFactory", nameof(value));
+		}
+
+		/// <summary>
 		/// Creates a new property rule.
 		/// </summary>
 		/// <param name="member">Property</param>
@@ -110,7 +119,8 @@ namespace FluentValidation.Internal {
 			Expression = expression;
 			OnFailure = x => { };
 			TypeToValidate = typeToValidate;
-			this._cascadeModeThunk = cascadeModeThunk;
+			_cascadeModeThunk = cascadeModeThunk;
+			_ruleElementFactory = worker => new RuleElement(worker, new ValidatorMetadata(), this);
 
 			var t = (m: Member, e: expression);
 			
@@ -136,15 +146,23 @@ namespace FluentValidation.Internal {
 		}
 
 		/// <summary>
+		/// Creates a new property rule from a lambda expression for a child collection.
+		/// </summary>
+		public static PropertyRule CreateForCollection<T, TCollectionElement>(Expression<Func<T, IEnumerable<TCollectionElement>>> expression, Func<CascadeMode> cascadeModeThunk) {
+			var member = expression.GetMember();
+			var compiled = expression.Compile();
+			var rule = new PropertyRule(member, compiled.CoerceToNonGeneric(), expression, cascadeModeThunk, typeof(TCollectionElement), typeof(T));
+			// Override the rule element factory with a version that handles collection indicies etc.
+			rule.RuleElementFactory = x => new CollectionRuleElement<TCollectionElement>(x, new ValidatorMetadata(), rule);
+			return rule;
+		}
+
+		/// <summary>
 		/// Adds a validator to the rule.
 		/// </summary>
 		public void AddValidator(IValidationWorker validator) {
-			CurrentValidator = CreateRuleElement(validator);
+			CurrentValidator = _ruleElementFactory(validator);
 			_validators.Add(CurrentValidator);
-		}
-
-		protected virtual RuleElement CreateRuleElement(IValidationWorker validator) {
-			return new RuleElement(validator, new ValidatorMetadata(), this);
 		}
 
 		/// <summary>

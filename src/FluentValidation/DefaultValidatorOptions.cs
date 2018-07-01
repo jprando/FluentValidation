@@ -208,12 +208,13 @@ namespace FluentValidation {
 		}
 
 		/// <summary>
-		/// Applies a filter to a collcetion property.
+		/// Applies a filter to a collection property.
 		/// </summary>
 		/// <param name="rule">The current rule</param>
 		/// <param name="predicate">The condition</param>
 		/// <returns></returns>
 		public static IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> Where<T, TCollectionElement>(this IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> rule, Func<TCollectionElement, bool> predicate) {
+			// This overload supports RuleFor().SetCollectionValidator() (which returns IRuleBuilderOptions<T, IEnumerable<TElement>>)
 			predicate.Guard("Cannot pass null to Where.", nameof(predicate));
 			return rule.Configure(cfg => {
 				cfg.ApplyCondition(ctx => predicate((TCollectionElement)ctx.Model));
