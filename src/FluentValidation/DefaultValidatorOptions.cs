@@ -212,7 +212,7 @@ namespace FluentValidation {
 		/// <param name="predicate">The condition</param>
 		/// <returns></returns>
 		public static IRuleBuilderInitialCollection<T, TCollectionElement> Where<T, TCollectionElement>(this IRuleBuilderInitialCollection<T, TCollectionElement> rule, Func<TCollectionElement, bool> predicate) {
-			// This overload supports RuleFor().SetCollectionValidator() (which returns IRuleBuilderOptions<T, IEnumerable<TElement>>)
+			// This overload supports RuleForEach().Where()
 			predicate.Guard("Cannot pass null to Where.", nameof(predicate));
 			return rule.Configure(cfg => {
 				var originalFactory = cfg.RuleElementFactory;
@@ -224,6 +224,29 @@ namespace FluentValidation {
 				};
 			});
 		}
+		
+		/// <summary>
+		/// Applies a filter to a collection property.
+		/// </summary>
+		/// <param name="rule">The current rule</param>
+		/// <param name="predicate">The condition</param>
+		/// <returns></returns>
+		[Obsolete("Use RuleForEach().Where(condition) instead.")]
+		public static IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> Where<T, TCollectionElement>(this IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> rule, Func<TCollectionElement, bool> predicate) {
+			// This overload supports RuleFor().SetCollectionValidator().
+			predicate.Guard("Cannot pass null to Where.", nameof(predicate));
+			
+			return rule.Configure(cfg => {
+				var originalFactory = cfg.RuleElementFactory;
+				
+				cfg.RuleElementFactory = v => {
+					var item = (CollectionPropertyRuleItem<TCollectionElement>)originalFactory(v);
+					item.Predicate = predicate;
+					return item;
+				};
+			});
+		}
+
 		
 		/// <summary>
 		/// Triggers an action when the rule passes. Typically used to configure dependent rules. This applies to all preceding rules in the chain. 

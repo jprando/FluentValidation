@@ -55,6 +55,14 @@ namespace FluentValidation {
 		/// <param name="validatorProvider">The validator provider to use</param>
 		IRuleBuilderOptions<T, TProperty> SetValidator<TValidator>(Func<T, TValidator> validatorProvider)
 			where TValidator : IValidator<TProperty>;
+		
+		/// <summary>
+		/// Associates a validator provider with the current property rule.
+		/// </summary>
+		/// <param name="validatorProvider">The validator provider to use</param>
+		IRuleBuilderOptions<T, TProperty> SetValidator<TValidator>(Func<T, IValidationContext, TValidator> validatorProvider)
+			where TValidator : IValidator<TProperty>;
+
 	}
 
 

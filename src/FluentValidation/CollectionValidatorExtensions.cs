@@ -19,6 +19,7 @@
 namespace FluentValidation {
 	using System;
 	using System.Collections.Generic;
+	using System.Linq.Expressions;
 	using Internal;
 	using Validators;
 
@@ -32,16 +33,18 @@ namespace FluentValidation {
 		/// <param name="ruleBuilder">Rule builder</param>
 		/// <param name="validator">The validator to use</param>
 		[Obsolete("SetcollectionValidator is deprecated and will be removed in FluentValidation 9.0. Please use RuleForEach(...).SetValidator() instead. For information on upgrading to FluentValidation 8, please see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
-		public static ICollectionValidatorRuleBuilder<T, TCollectionElement> SetCollectionValidator<T, TCollectionElement>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, IValidator<TCollectionElement> validator) {
-			var adaptor = new ChildCollectionValidatorAdaptor(validator);
-			ruleBuilder.SetValidator(adaptor);
-			IValidator<T> parentValidator = null;
+		public static IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetCollectionValidator<T, TCollectionElement>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, IValidator<TCollectionElement> validator) {
+			var childValidator = new InlineValidator<IEnumerable<TCollectionElement>>();
+			var childRule = childValidator.RuleForEach(x => x).SetValidator(validator);
+			ruleBuilder.SetValidator(childValidator);
 
+			// needed to support DependentRules
+			IValidator<T> parentValidator = null;
 			if (ruleBuilder is IExposesParentValidator<T> exposesParentValidator) {
 				parentValidator = exposesParentValidator.ParentValidator;
 			}
-
-			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, adaptor, parentValidator);
+			
+			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, childRule, parentValidator);
 		}
 
 		/// <summary>
@@ -56,16 +59,17 @@ namespace FluentValidation {
 		[Obsolete("SetcollectionValidator is deprecated and will be removed in FluentValidation 9.0. Please use RuleForEach(...).SetValidator() instead. For information on upgrading to FluentValidation 8, please see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
 		public static ICollectionValidatorRuleBuilder<T, TCollectionElement> SetCollectionValidator<T, TCollectionElement, TValidator>(this IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, Func<T, TValidator> validator)
 			where TValidator : IValidator<TCollectionElement> {
-			var adaptor = new ChildCollectionValidatorAdaptor(parent => validator((T) parent), typeof(TValidator));
-			ruleBuilder.SetValidator(adaptor);
-
-			IValidator<T> parentValidator= null;
-
+			var childValidator = new InlineValidator<IEnumerable<TCollectionElement>>();
+			var childRule = childValidator.RuleForEach(x => x).SetValidator((coll, ctx) => validator((T) ctx.InstanceToValidate));
+			ruleBuilder.SetValidator(childValidator);
+			
+			// needed to support DependentRules
+			IValidator<T> parentValidator = null;
 			if (ruleBuilder is IExposesParentValidator<T> exposesParentValidator) {
 				parentValidator = exposesParentValidator.ParentValidator;
 			}
-
-			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, adaptor, parentValidator);
+			
+			return new CollectionValidatorRuleBuilder<T, TCollectionElement>(ruleBuilder, childRule, parentValidator);
 		}
 
 		/// <summary>
@@ -85,9 +89,9 @@ namespace FluentValidation {
 		[Obsolete]
 		private class CollectionValidatorRuleBuilder<T,TCollectionElement> : ICollectionValidatorRuleBuilder<T,TCollectionElement>, IExposesParentValidator<T> {
 			IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder;
-			ChildCollectionValidatorAdaptor adaptor;
+			IRuleBuilderOptions<IEnumerable<TCollectionElement>, TCollectionElement> adaptor;
 
-			public CollectionValidatorRuleBuilder(IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, ChildCollectionValidatorAdaptor adaptor, IValidator<T> parent) {
+			public CollectionValidatorRuleBuilder(IRuleBuilder<T, IEnumerable<TCollectionElement>> ruleBuilder, IRuleBuilderOptions<IEnumerable<TCollectionElement>, TCollectionElement> adaptor, IValidator<T> parent) {
 				this.ruleBuilder = ruleBuilder;
 				this.adaptor = adaptor;
 				ParentValidator = parent;
@@ -106,13 +110,17 @@ namespace FluentValidation {
 				return ruleBuilder.SetValidator(validatorProvider);
 			}
 
+			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> SetValidator<TValidator>(Func<T, IValidationContext, TValidator> validatorProvider) where TValidator : IValidator<IEnumerable<TCollectionElement>> {
+				return ruleBuilder.SetValidator(validatorProvider);
+			}
+
 			public IRuleBuilderOptions<T, IEnumerable<TCollectionElement>> Configure(Action<PropertyRule> configurator) {
 				return ((IRuleBuilderOptions<T, IEnumerable<TCollectionElement>>)ruleBuilder).Configure(configurator);
 			}
 
 			public ICollectionValidatorRuleBuilder<T, TCollectionElement> Where(Func<TCollectionElement, bool> predicate) {
 				predicate.Guard("Cannot pass null to Where.", nameof(predicate));
-				adaptor.Predicate = x => predicate((TCollectionElement)x);
+				adaptor.When(x => predicate((TCollectionElement)x));
 				return this;
 			}
 
