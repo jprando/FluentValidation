@@ -11,14 +11,10 @@
 	public class ServiceProviderTests : IClassFixture<WebAppFixture<StartupWithContainer>> {
 		private readonly WebAppFixture<StartupWithContainer> _webApp;
 
-
-		public ServiceProviderTests(WebAppFixture<StartupWithContainer> webApp)
-		{
+		public ServiceProviderTests(WebAppFixture<StartupWithContainer> webApp) {
 			_webApp = webApp;
 		}
 
-
-		//these need writing
 		[Fact]
         public async Task Gets_validators_from_service_provider() {
 			var form = new FormData {

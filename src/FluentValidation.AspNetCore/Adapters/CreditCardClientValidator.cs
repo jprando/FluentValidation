@@ -24,14 +24,14 @@ namespace FluentValidation.AspNetCore
 	using Validators;
 
 	internal class CreditCardClientValidator : ClientValidatorBase {
-		public CreditCardClientValidator(PropertyRule rule, IPropertyValidator validator) : base(rule, validator) {
+		public CreditCardClientValidator(PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata) : base(rule, validator, metadata) {
 		}
 
 		public override void AddValidation(ClientModelValidationContext context) {
 			var formatter = ValidatorOptions.MessageFormatterFactory().AppendPropertyName(Rule.GetDisplayName());
 			string message;
 			try {
-				message = Validator.ErrorMessageSource.GetString(null);
+				message = Metadata.ErrorMessageSource.GetString(null);
 			}
 			catch (FluentValidationMessageFormatException) {
 				message = ValidatorOptions.LanguageManager.GetStringForValidator<CreditCardValidator>();

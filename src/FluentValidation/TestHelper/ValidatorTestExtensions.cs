@@ -72,7 +72,7 @@ namespace FluentValidation.TestHelper {
 			matchingValidators = matchingValidators.Concat(GetDependentRules(expressionMemberName, expression, descriptor)).ToArray();
 			
 			var childValidatorTypes = matchingValidators.Select(x => x.Worker).OfType<ChildValidatorAdaptor>().Select(x => x.ValidatorType);
-			//childValidatorTypes = childValidatorTypes.Concat(matchingValidators.OfType<ChildCollectionValidatorAdaptor>().Select(x => x.ChildValidatorType));
+			childValidatorTypes = childValidatorTypes.Concat(matchingValidators.Select(x => x.Worker).OfType<ChildCollectionValidatorAdaptor>().Select(x => x.ChildValidatorType));
 
 			if (childValidatorTypes.All(x => !childValidatorType.GetTypeInfo().IsAssignableFrom(x.GetTypeInfo()))) {
 				var childValidatorNames = childValidatorTypes.Any() ? string.Join(", ", childValidatorTypes.Select(x => x.Name)) : "none";
@@ -80,7 +80,7 @@ namespace FluentValidation.TestHelper {
 			}
 		}
 
-		private static IEnumerable<RuleElement> GetDependentRules<T, TProperty>(string expressionMemberName, Expression<Func<T, TProperty>> expression, IValidatorDescriptor descriptor) {
+		private static IEnumerable<PropertyRuleItem> GetDependentRules<T, TProperty>(string expressionMemberName, Expression<Func<T, TProperty>> expression, IValidatorDescriptor descriptor) {
 			var member = expression.IsParameterExpression() ? null : expressionMemberName;
 			var rules = descriptor.GetRulesForMember(member).OfType<PropertyRule>().SelectMany(x => x.DependentRules)
 				.SelectMany(x => x.Validators);
@@ -88,7 +88,7 @@ namespace FluentValidation.TestHelper {
 			return rules;
 		}
 
-		private static RuleElement[] GetModelLevelValidators(IValidatorDescriptor descriptor) {
+		private static PropertyRuleItem[] GetModelLevelValidators(IValidatorDescriptor descriptor) {
 			var rules = descriptor.GetRulesForMember(null).OfType<PropertyRule>();
 			return rules.Where(x => x.Expression.IsParameterExpression()).SelectMany(x => x.Validators)
 				.ToArray();

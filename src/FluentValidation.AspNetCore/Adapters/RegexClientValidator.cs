@@ -24,8 +24,8 @@ namespace FluentValidation.AspNetCore {
 
 	internal class RegexClientValidator : ClientValidatorBase {
 
-		public RegexClientValidator(PropertyRule rule, IPropertyValidator validator)
-			: base(rule, validator) {
+		public RegexClientValidator(PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata)
+			: base(rule, validator, metadata) {
 		}
 
 		public override void AddValidation(ClientModelValidationContext context) {
@@ -33,7 +33,7 @@ namespace FluentValidation.AspNetCore {
 			var formatter = ValidatorOptions.MessageFormatterFactory().AppendPropertyName(Rule.GetDisplayName());
 			string messageTemplate;
 			try {
-				messageTemplate = regexVal.ErrorMessageSource.GetString(null);
+				messageTemplate = Metadata.ErrorMessageSource.GetString(null);
 			}
 			catch (FluentValidationMessageFormatException) {
 				messageTemplate = ValidatorOptions.LanguageManager.GetStringForValidator<RegularExpressionValidator>();

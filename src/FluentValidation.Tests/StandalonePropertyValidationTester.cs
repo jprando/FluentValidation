@@ -14,7 +14,7 @@ namespace FluentValidation.Tests {
 			var rule = new PropertyRule(null, x => null, null, null, typeof(string), null) {
 				PropertyName = "Surname"
 			};
-			var context = new PropertyValidatorContext(parentContext, rule, new ValidatorMetadata());
+			var context = new PropertyValidatorContext(parentContext, rule, "Surname");
 			var result = validator.Validate(context);
 			result.Single().ShouldNotBeNull();
 		}
@@ -26,7 +26,7 @@ namespace FluentValidation.Tests {
 			var rule = new PropertyRule(null, x => 100D /* double */, null, null, typeof(string), null) {
 				PropertyName = "Surname"
 			};
-			var context = new PropertyValidatorContext(parentContext, rule, new ValidatorMetadata());
+			var context = new PropertyValidatorContext(parentContext, rule, "Surname");
 			var result = validator.Validate(context); // would fail saying that decimal is not double
 			result.Count().ShouldEqual(0);
 		}

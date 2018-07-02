@@ -23,6 +23,9 @@ namespace FluentValidation.AspNetCore {
 
     internal class MinLengthClientValidator :ClientValidatorBase {
 
+	    public MinLengthClientValidator(PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata) : base(rule, validator, metadata) {
+	    }
+	    
 		public override void AddValidation(ClientModelValidationContext context) {
 		    var lengthVal = (MinimumLengthValidator)Validator;
 
@@ -38,11 +41,11 @@ namespace FluentValidation.AspNetCore {
 			    .AppendArgument("MinLength", lengthVal.Min)
 			    .AppendArgument("MaxLength", lengthVal.Max);
 
-		    bool messageNeedsSplitting = lengthVal.ErrorMessageSource.ResourceType == typeof(LanguageManager);
+		    bool messageNeedsSplitting = Metadata.ErrorMessageSource.ResourceType == typeof(LanguageManager);
 
 		    string message;
 		    try {
-			    message = lengthVal.ErrorMessageSource.GetString(null);
+			    message = Metadata.ErrorMessageSource.GetString(null);
 		    } catch (FluentValidationMessageFormatException) {
 				message = ValidatorOptions.LanguageManager.GetStringForValidator<MinimumLengthValidator>();
 			    messageNeedsSplitting = true;
@@ -59,9 +62,6 @@ namespace FluentValidation.AspNetCore {
 
 		    message = formatter.BuildMessage(message);
 		    return message;
-	    }
-
-	    public MinLengthClientValidator(PropertyRule rule, IPropertyValidator validator) : base(rule, validator) {
 	    }
     }
 }

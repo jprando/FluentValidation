@@ -23,11 +23,9 @@ namespace FluentValidation.AspNetCore {
 	using Validators;
 
 	internal class RangeClientValidator : ClientValidatorBase {
-		InclusiveBetweenValidator RangeValidator {
-			get { return (InclusiveBetweenValidator)Validator; }
-		}
-		
-		public RangeClientValidator(PropertyRule rule, IPropertyValidator validator) : base(rule, validator) {
+		InclusiveBetweenValidator RangeValidator => (InclusiveBetweenValidator)Validator;
+
+		public RangeClientValidator(PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata) : base(rule, validator, metadata) {
 
 		}
 
@@ -45,15 +43,15 @@ namespace FluentValidation.AspNetCore {
 				.AppendPropertyName(Rule.GetDisplayName())
 				.AppendArgument("From", RangeValidator.From)
 				.AppendArgument("To", RangeValidator.To);
-			var messageNeedsSplitting = RangeValidator.ErrorMessageSource.ResourceType == typeof(LanguageManager);
+			var messageNeedsSplitting = Metadata.ErrorMessageSource.ResourceType == typeof(LanguageManager);
 
 			string message;
 
 			try {
-				message = RangeValidator.ErrorMessageSource.GetString(null);
+				message = Metadata.ErrorMessageSource.GetString(null);
 			}
 			catch (FluentValidationMessageFormatException) {
-				message =ValidatorOptions.LanguageManager.GetStringForValidator<InclusiveBetweenValidator>();
+				message = ValidatorOptions.LanguageManager.GetStringForValidator<InclusiveBetweenValidator>();
 				messageNeedsSplitting = true;
 			}
 

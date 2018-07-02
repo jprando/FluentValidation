@@ -27,7 +27,7 @@ namespace FluentValidation.AspNetCore {
 			get { return (IEmailValidator)Validator; }
 		}
 
-		public EmailClientValidator(PropertyRule rule, IPropertyValidator validator) : base(rule, validator) {
+		public EmailClientValidator(PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata) : base(rule, validator, metadata) {
 		}
 
 		public override void AddValidation(ClientModelValidationContext context) {
@@ -35,7 +35,7 @@ namespace FluentValidation.AspNetCore {
 
 			string messageTemplate;
 			try {
-				messageTemplate = EmailValidator.ErrorMessageSource.GetString(null);
+				messageTemplate = Metadata.ErrorMessageSource.GetString(null);
 			}
 			catch (FluentValidationMessageFormatException) {
 				messageTemplate = ValidatorOptions.LanguageManager.GetStringForValidator<EmailValidator>();

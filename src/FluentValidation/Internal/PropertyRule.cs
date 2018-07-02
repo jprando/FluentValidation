@@ -33,12 +33,12 @@ namespace FluentValidation.Internal {
 	/// Defines a rule associated with a property.
 	/// </summary>
 	public class PropertyRule : IValidationRule {
-		readonly List<RuleElement> _validators = new List<RuleElement>();
+		readonly List<PropertyRuleItem> _validators = new List<PropertyRuleItem>();
 		Func<CascadeMode> _cascadeModeThunk = () => ValidatorOptions.CascadeMode;
 		string _propertyDisplayName;
 		string _propertyName;
 		private string[] _ruleSet = new string[0];
-		private Func<IValidationWorker, RuleElement> _ruleElementFactory;
+		private Func<IValidationWorker, PropertyRuleItem> _ruleElementFactory;
 
 		/// <summary>
 		/// Property associated with this rule.
@@ -76,7 +76,7 @@ namespace FluentValidation.Internal {
 		/// <summary>
 		/// The current validator being configured by this rule.
 		/// </summary>
-		public RuleElement CurrentValidator { get; private set; }
+		public PropertyRuleItem CurrentValidator { get; private set; }
 
 		/// <summary>
 		/// Type of the property being validated
@@ -94,12 +94,12 @@ namespace FluentValidation.Internal {
 		/// <summary>
 		/// Validators associated with this rule.
 		/// </summary>
-		public IEnumerable<RuleElement> Validators => _validators;
+		public IEnumerable<PropertyRuleItem> Validators => _validators;
 
 		/// <summary>
 		/// Defines the factory used to create rule elements.
 		/// </summary>
-		public Func<IValidationWorker, RuleElement> RuleElementFactory {
+		public Func<IValidationWorker, PropertyRuleItem> RuleElementFactory {
 			get => _ruleElementFactory;
 			set => _ruleElementFactory = value ?? throw new ArgumentNullException("Cannot pass null to RuleElementFactory", nameof(value));
 		}
@@ -120,10 +120,8 @@ namespace FluentValidation.Internal {
 			OnFailure = x => { };
 			TypeToValidate = typeToValidate;
 			_cascadeModeThunk = cascadeModeThunk;
-			_ruleElementFactory = worker => new RuleElement(worker, new ValidatorMetadata(), this);
+			_ruleElementFactory = worker => new PropertyRuleItem(worker, this);
 
-			var t = (m: Member, e: expression);
-			
 			DependentRules = new List<IValidationRule>();
 			PropertyName = ValidatorOptions.PropertyNameResolver(containerType, member, expression);
 			DisplayName = new LazyStringSource(x =>  ValidatorOptions.DisplayNameResolver(containerType, member, expression));
@@ -153,7 +151,7 @@ namespace FluentValidation.Internal {
 			var compiled = expression.Compile();
 			var rule = new PropertyRule(member, compiled.CoerceToNonGeneric(), expression, cascadeModeThunk, typeof(TCollectionElement), typeof(T));
 			// Override the rule element factory with a version that handles collection indicies etc.
-			rule.RuleElementFactory = x => new CollectionRuleElement<TCollectionElement>(x, new ValidatorMetadata(), rule);
+			rule.RuleElementFactory = x => new CollectionPropertyRuleItem<TCollectionElement>(x, rule);
 			return rule;
 		}
 
@@ -465,7 +463,8 @@ namespace FluentValidation.Internal {
 	/// <summary>
 	/// Holds a validation worker and its metadata.
 	/// </summary>
-	public class RuleElement {
+	public class PropertyRuleItem {
+		private static readonly Action<ValidatorMetadata> NoOpConfigurator = x => { }; 
 		private IValidationWorker _worker;
 
 		protected PropertyRule Rule { get; }
@@ -476,10 +475,16 @@ namespace FluentValidation.Internal {
 		/// <param name="worker"></param>
 		/// <param name="metadata"></param>
 		/// <param name="rule"></param>
-		public RuleElement(IValidationWorker worker, ValidatorMetadata metadata, PropertyRule rule) {
+		public PropertyRuleItem(IValidationWorker worker, PropertyRule rule) {
 			_worker = worker;
-			Metadata = metadata;
 			Rule = rule;
+
+			if (worker is IConfigurable<ValidatorMetadata, ValidatorMetadata> m) {
+				Metadata = m.Configure(NoOpConfigurator);
+			}
+			else {
+				Metadata = new ValidatorMetadata();
+			}
 		}
 
 		/// <summary>
@@ -500,7 +505,7 @@ namespace FluentValidation.Internal {
 		/// </summary>
 		/// <returns></returns>
 		public virtual async Task<bool> ValidateAsync(IValidationContext context, string propertyName, CancellationToken cancellation) {
-			var propertyValidatorContext = new PropertyValidatorContext(context, Rule, Metadata.Clone(propertyName));
+			var propertyValidatorContext = new PropertyValidatorContext(context, Rule, propertyName);
 			await _worker.ValidateAsync(propertyValidatorContext, cancellation);
 			return !propertyValidatorContext.HasFailures;
 		}
@@ -509,7 +514,7 @@ namespace FluentValidation.Internal {
 		/// Invokes a property validator using the specified validation context.
 		/// </summary>
 		public virtual bool Validate(IValidationContext context, string propertyName) {
-			var propertyContext = new PropertyValidatorContext(context, Rule, Metadata.Clone(propertyName));
+			var propertyContext = new PropertyValidatorContext(context, Rule, propertyName);
 			_worker.Validate(propertyContext);
 			return !propertyContext.HasFailures;
 		}

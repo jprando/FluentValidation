@@ -27,38 +27,100 @@ namespace FluentValidation.Validators {
 	using Resources;
 	using Results;
 
-	[Obsolete("PropertyValidator is deprecated and will be removed in FluentValidation 9.0. For custom validators, you should either call RuleFor(..).Custom(expression) or inherit from ValidatorBase. For more information on upgrading, see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
-	public abstract class PropertyValidator : IPropertyValidator, IValidationWorker {
-		private IStringSource _errorSource;
-		private IStringSource _errorCodeSource;
-		public Func<PropertyValidatorContext, object> CustomStateProvider { get; set; }
+	public abstract class DefaultPropertyValidator : IValidationWorker, IConfigurable<ValidatorMetadata, ValidatorMetadata> {
+		
+		public ValidatorMetadata Metadata { get; } = new ValidatorMetadata();
 
-		public Severity Severity { get; set; }
+		bool IValidationWorker.Validate(IValidationContext context) {
+			if (!(context is PropertyValidatorContext ctx)) {
+				throw new ArgumentException("Must pass a PropertyValidatorContext to ValidateAsync", nameof(context));
+			}
+			Validate(ctx);
+			return !ctx.HasFailures;
+		}
+
+		async Task<bool> IValidationWorker.ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
+			if (!(context is PropertyValidatorContext ctx)) {
+				throw new ArgumentException("Must pass a PropertyValidatorContext to ValidateAsync", nameof(context));
+			}
+			await ValidateAsync(ctx, cancellationToken);
+			return !ctx.HasFailures;
+		}
+
+		
+		protected DefaultPropertyValidator(IStringSource errorMessageSource) {
+			if(errorMessageSource == null) errorMessageSource = new StaticStringSource("No default error message has been specified.");
+			Metadata.ErrorMessageSource = errorMessageSource;
+		}
+
+		protected DefaultPropertyValidator(string errorMessageResourceName, Type errorMessageResourceType) {
+			errorMessageResourceName.Guard("errorMessageResourceName must be specified.", nameof(errorMessageResourceName));
+			errorMessageResourceType.Guard("errorMessageResourceType must be specified.", nameof(errorMessageResourceType));
+
+			Metadata.ErrorMessageSource = new LocalizedStringSource(errorMessageResourceType, errorMessageResourceName);
+		}
+
+		protected DefaultPropertyValidator(string errorMessage) {
+			Metadata.ErrorMessageSource = new StaticStringSource(errorMessage);
+		}
+		
+		public virtual bool ShouldValidateAsync(IValidationContext context) {
+			return false; // context.IsAsync; ????
+		}
+
+		public virtual void Validate(PropertyValidatorContext context) {
+		}
+		
+#pragma warning disable 1998 
+		public virtual async Task ValidateAsync(PropertyValidatorContext context, CancellationToken cancellationToken) {
+			Validate(context);
+		}
+#pragma warning restore 1998
+		ValidatorMetadata IConfigurable<ValidatorMetadata, ValidatorMetadata>.Configure(Action<ValidatorMetadata> configurator) {
+			configurator.Guard("Configuration action cannot be null.", nameof(configurator));
+			configurator(Metadata);
+			return Metadata;
+		}
+	} 
+
+	[Obsolete("PropertyValidator is deprecated. For custom validators, you should either call RuleFor(..).Custom(expression) or inherit from DefaultPropertyValidator. For more information on upgrading, see https://fluentvalidation.net/upgrading-to-fluentvalidation-8")]
+	public abstract class PropertyValidator : IPropertyValidator, IValidationWorker, IConfigurable<ValidatorMetadata, ValidatorMetadata> {
+		private ValidatorMetadata _metadata = new ValidatorMetadata();
+
+		public Func<PropertyValidatorContext, object> CustomStateProvider {
+			get => _metadata.CustomStateProvider;
+			set => _metadata.CustomStateProvider = value;
+		}
+
+		public Severity Severity {
+			get => _metadata.Severity;
+			set => _metadata.Severity = value;
+		}
 
 		protected PropertyValidator(IStringSource errorMessageSource) {
 			if(errorMessageSource == null) errorMessageSource = new StaticStringSource("No default error message has been specified.");
-			_errorSource = errorMessageSource;
+			_metadata.ErrorMessageSource = errorMessageSource;
 		}
 
 		protected PropertyValidator(string errorMessageResourceName, Type errorMessageResourceType) {
 			errorMessageResourceName.Guard("errorMessageResourceName must be specified.", nameof(errorMessageResourceName));
 			errorMessageResourceType.Guard("errorMessageResourceType must be specified.", nameof(errorMessageResourceType));
 
-			_errorSource = new LocalizedStringSource(errorMessageResourceType, errorMessageResourceName);
+			_metadata.ErrorMessageSource = new LocalizedStringSource(errorMessageResourceType, errorMessageResourceName);
 		}
 
 		protected PropertyValidator(string errorMessage) {
-			_errorSource = new StaticStringSource(errorMessage);
+			_metadata.ErrorMessageSource = new StaticStringSource(errorMessage);
 		}
 
 		public IStringSource ErrorMessageSource {
-			get { return _errorSource; }
+			get { return _metadata.ErrorMessageSource; }
 			set {
 				if (value == null) {
 					throw new ArgumentNullException("value");
 				}
 
-				_errorSource = value;
+				_metadata.ErrorMessageSource = value;
 			}
 		}
 
@@ -109,7 +171,7 @@ namespace FluentValidation.Validators {
 		/// <param name="context">The validator context</param>
 		/// <returns>Returns an error validation result.</returns>
 		protected virtual ValidationFailure CreateValidationError(PropertyValidatorContext context) {
-			var messageBuilderContext = new MessageBuilderContext(context, _errorSource, this);
+			var messageBuilderContext = new MessageBuilderContext(context, _metadata.ErrorMessageSource, this);
 
 			var error = context.Rule.MessageBuilder != null 
 				? context.Rule.MessageBuilder(messageBuilderContext) 
@@ -118,9 +180,9 @@ namespace FluentValidation.Validators {
 			var failure = new ValidationFailure(context.PropertyName, error, context.PropertyValue);
 			failure.FormattedMessageArguments = context.MessageFormatter.AdditionalArguments;
 			failure.FormattedMessagePlaceholderValues = context.MessageFormatter.PlaceholderValues;
-			failure.ResourceName = _errorSource.ResourceName;
-			failure.ErrorCode = (_errorCodeSource != null)
-				? _errorCodeSource.GetString(context)
+			failure.ResourceName = _metadata.ErrorMessageSource.ResourceName;
+			failure.ErrorCode = (_metadata.ErrorCodeSource != null)
+				? _metadata.ErrorCodeSource.GetString(context)
 				: ValidatorOptions.ErrorCodeResolver(this);
 
 			if (CustomStateProvider != null) {
@@ -133,44 +195,31 @@ namespace FluentValidation.Validators {
 
 
 		public IStringSource ErrorCodeSource {
-			get => _errorCodeSource;
-			set => _errorCodeSource = value ?? throw new ArgumentNullException(nameof(value));
+			get => _metadata.ErrorCodeSource;
+			set => _metadata.ErrorCodeSource = value;
 		}
 
 		bool IValidationWorker.Validate(IValidationContext context) {
-			SetMetadata(((PropertyValidatorContext) context).Metadata);
 			var failures = Validate((PropertyValidatorContext) context).ToList();
 			failures.ForEach(context.AddFailure);
 			return !failures.Any();
 		}
 
 		async Task<bool> IValidationWorker.ValidateAsync(IValidationContext context, CancellationToken cancellationToken) {
-			SetMetadata(((PropertyValidatorContext) context).Metadata);
 			var failures = (await ValidateAsync((PropertyValidatorContext) context, cancellationToken)).ToList();
 			failures.ForEach(context.AddFailure);
 			return !failures.Any();
 		}
 
-		private void SetMetadata(ValidatorMetadata metadata) {
-			// For backwards compatibility, copy from the metadata object
-			// to the metadata properties on the legacy PropertyValidator.
-			if (metadata.ErrorCodeSource != null) {
-				ErrorCodeSource = metadata.ErrorCodeSource;
-			}
-
-			if (metadata.ErrorMessageSource != null) {
-				ErrorMessageSource = metadata.ErrorMessageSource;
-			}
-
-			if (metadata.CustomStateProvider != null) {
-				CustomStateProvider = metadata.CustomStateProvider;
-			}
-
-			Severity = metadata.Severity;
-		}
-
 		public virtual bool ShouldValidateAsync(IValidationContext context) {
 			return false;
 		}
+		
+		ValidatorMetadata IConfigurable<ValidatorMetadata, ValidatorMetadata>.Configure(Action<ValidatorMetadata> configurator) {
+			configurator.Guard("Configuration action cannot be null.", nameof(configurator));
+			configurator(_metadata);
+			return _metadata;
+		}
+
 	}
 }

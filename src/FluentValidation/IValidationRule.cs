@@ -32,7 +32,7 @@ namespace FluentValidation {
 		/// <summary>
 		/// The validators that are grouped under this rule.
 		/// </summary>
-		IEnumerable<RuleElement> Validators { get; }
+		IEnumerable<PropertyRuleItem> Validators { get; }
 		/// <summary>
 		/// Name of the rule-set to which this rule belongs.
 		/// </summary>

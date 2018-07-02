@@ -21,15 +21,18 @@ namespace FluentValidation.AspNetCore {
 	using Internal;
 	using Validators;
 	using System.Linq;
+	using System.Reflection.Metadata.Ecma335;
 	using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 	public abstract class ClientValidatorBase : IClientModelValidator {
-		public IPropertyValidator Validator { get; private set; }
+		public IValidationWorker Validator { get; private set; }
 		public PropertyRule Rule { get; private set; }
-
-		public ClientValidatorBase(PropertyRule rule, IPropertyValidator validator) {
-			this.Validator = validator;
-			this.Rule = rule;
+		public ValidatorMetadata Metadata { get; private set; }
+		
+		public ClientValidatorBase(PropertyRule rule, IValidationWorker worker, ValidatorMetadata metadata) {
+			Validator = worker;
+			Rule = rule;
+			Metadata = metadata;
 		}
 
 		public abstract void AddValidation(ClientModelValidationContext context);

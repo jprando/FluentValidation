@@ -23,8 +23,8 @@ namespace FluentValidation.AspNetCore {
 	using Validators;
 
 	internal class StringLengthClientValidator : ClientValidatorBase {
-		public StringLengthClientValidator(PropertyRule rule, IPropertyValidator validator)
-			: base(rule, validator) {
+		public StringLengthClientValidator(PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata)
+			: base(rule, validator, metadata) {
 		}
 
 		public override void AddValidation(ClientModelValidationContext context) {
@@ -43,11 +43,11 @@ namespace FluentValidation.AspNetCore {
 				.AppendArgument("MinLength", lengthVal.Min)
 				.AppendArgument("MaxLength", lengthVal.Max);
 
-			bool messageNeedsSplitting = lengthVal.ErrorMessageSource.ResourceType == typeof(LanguageManager);
+			bool messageNeedsSplitting = Metadata.ErrorMessageSource.ResourceType == typeof(LanguageManager);
 
 			string message;
 			try {
-				message = lengthVal.ErrorMessageSource.GetString(null);
+				message = Metadata.ErrorMessageSource.GetString(null);
 			}
 			catch (FluentValidationMessageFormatException) {
 				if (lengthVal is ExactLengthValidator) {

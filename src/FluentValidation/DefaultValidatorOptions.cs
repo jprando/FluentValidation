@@ -280,7 +280,7 @@ namespace FluentValidation {
 			nameProvider.Guard("A nameProvider WithName.", nameof(nameProvider));
 
 			return rule.Configure(config => {
-				config.DisplayName = new LazyStringSource(context => nameProvider((T) context.InstanceToValidate));
+				config.DisplayName = new LazyStringSource(context => nameProvider((T) context?.InstanceToValidate));
 			});
 		}
 

@@ -25,7 +25,7 @@ namespace FluentValidation.AspNetCore {
 	using FluentValidation.Validators;
 	using Microsoft.AspNetCore.Http;
 
-	public delegate IClientModelValidator FluentValidationClientValidatorFactory(ClientValidatorProviderContext context, PropertyRule rule, IPropertyValidator validator);
+	public delegate IClientModelValidator FluentValidationClientValidatorFactory(ClientValidatorProviderContext context, PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata);
 
 	/// <summary>
 	/// Used to generate clientside metadata from FluentValidation's rules.
@@ -37,20 +37,20 @@ namespace FluentValidation.AspNetCore {
 		public Dictionary<Type, FluentValidationClientValidatorFactory> ClientValidatorFactories => _validatorFactories;
 
 		private readonly Dictionary<Type, FluentValidationClientValidatorFactory> _validatorFactories = new Dictionary<Type, FluentValidationClientValidatorFactory>() {
-			{ typeof(INotNullValidator), (context, rule, validator) => new RequiredClientValidator(rule, validator) },
-			{ typeof(INotEmptyValidator), (context, rule, validator) => new RequiredClientValidator(rule, validator) },
+			{ typeof(INotNullValidator), (context, rule, validator, metadata) => new RequiredClientValidator(rule, validator, metadata) },
+			{ typeof(INotEmptyValidator), (context, rule, validator, metadata) => new RequiredClientValidator(rule, validator, metadata) },
 			// email must come before regex.
-			{ typeof(IEmailValidator), (context, rule, validator) => new EmailClientValidator(rule, validator) },
-			{ typeof(IRegularExpressionValidator), (context, rule, validator) => new RegexClientValidator(rule, validator) },
-			{ typeof(MaximumLengthValidator), (context, rule, validator) => new MaxLengthClientValidator(rule, validator) },
-			{ typeof(MinimumLengthValidator), (context, rule, validator) => new MinLengthClientValidator(rule, validator) },
-			{ typeof(LengthValidator), (context, rule, validator) => new StringLengthClientValidator(rule, validator)},
-			{ typeof(ExactLengthValidator), (context, rule, validator) => new StringLengthClientValidator(rule, validator)},
-			{ typeof(InclusiveBetweenValidator), (context, rule, validator) => new RangeClientValidator(rule, validator) },
-			{ typeof(GreaterThanOrEqualValidator), (context, rule, validator) => new RangeMinClientValidator(rule, validator) },
-			{ typeof(LessThanOrEqualValidator), (context, rule, validator) => new RangeMaxClientValidator(rule, validator) },
-			{ typeof(EqualValidator), (context, rule, validator) => new EqualToClientValidator(rule, validator) },
-			{ typeof(CreditCardValidator), (context, rule, validator) => new CreditCardClientValidator(rule, validator) },
+			{ typeof(IEmailValidator), (context, rule, validator, metadata) => new EmailClientValidator(rule, validator, metadata) },
+			{ typeof(IRegularExpressionValidator), (context, rule, validator, metadata) => new RegexClientValidator(rule, validator, metadata) },
+			{ typeof(MaximumLengthValidator), (context, rule, validator, metadata) => new MaxLengthClientValidator(rule, validator, metadata) },
+			{ typeof(MinimumLengthValidator), (context, rule, validator, metadata) => new MinLengthClientValidator(rule, validator, metadata) },
+			{ typeof(LengthValidator), (context, rule, validator, metadata) => new StringLengthClientValidator(rule, validator, metadata)},
+			{ typeof(ExactLengthValidator), (context, rule, validator, metadata) => new StringLengthClientValidator(rule, validator, metadata)},
+			{ typeof(InclusiveBetweenValidator), (context, rule, validator, metadata) => new RangeClientValidator(rule, validator, metadata) },
+			{ typeof(GreaterThanOrEqualValidator), (context, rule, validator, metadata) => new RangeMinClientValidator(rule, validator, metadata) },
+			{ typeof(LessThanOrEqualValidator), (context, rule, validator, metadata) => new RangeMaxClientValidator(rule, validator, metadata) },
+			{ typeof(EqualValidator), (context, rule, validator, metadata) => new EqualToClientValidator(rule, validator, metadata) },
+			{ typeof(CreditCardValidator), (context, rule, validator, metadata) => new CreditCardClientValidator(rule, validator, metadata) },
 		};
 
 		public FluentValidationClientModelValidatorProvider(IHttpContextAccessor httpContextAccessor) {
@@ -75,7 +75,7 @@ namespace FluentValidation.AspNetCore {
 					let validators = rule.Validators
 					where validators.Any()
 					from propertyValidator in validators
-					let modelValidatorForProperty = GetModelValidator(context, propertyRule, propertyValidator.Worker as IPropertyValidator)
+					let modelValidatorForProperty = GetModelValidator(context, propertyRule, propertyValidator.Worker, propertyValidator.Metadata)
 					where modelValidatorForProperty != null
 					select modelValidatorForProperty;
 
@@ -116,7 +116,7 @@ namespace FluentValidation.AspNetCore {
 			}
 		}
 
-		protected virtual IClientModelValidator GetModelValidator(ClientValidatorProviderContext context, PropertyRule rule, IPropertyValidator propertyValidator) {
+		protected virtual IClientModelValidator GetModelValidator(ClientValidatorProviderContext context, PropertyRule rule, IValidationWorker propertyValidator, ValidatorMetadata metadata) {
 			if (propertyValidator == null) return null;
 			
 			var type = propertyValidator.GetType();
@@ -132,7 +132,7 @@ namespace FluentValidation.AspNetCore {
 				bool shouldExecute = ruleSetToGenerateClientSideRules.Intersect(rule.RuleSets, StringComparer.OrdinalIgnoreCase).Any() || executeDefaultRule;
 
 				if (shouldExecute) {
-					return factory.Invoke(context, rule, propertyValidator);
+					return factory.Invoke(context, rule, propertyValidator, metadata);
 				}
 			}
 

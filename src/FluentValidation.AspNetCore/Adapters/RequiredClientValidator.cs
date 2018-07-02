@@ -23,7 +23,7 @@ namespace FluentValidation.AspNetCore {
 	using Validators;
 
 	internal class RequiredClientValidator : ClientValidatorBase{
-		public RequiredClientValidator(PropertyRule rule, IPropertyValidator validator) : base(rule, validator) {
+		public RequiredClientValidator(PropertyRule rule, IValidationWorker validator, ValidatorMetadata metadata) : base(rule, validator, metadata) {
 
 		}
 
@@ -36,7 +36,7 @@ namespace FluentValidation.AspNetCore {
 			var formatter = ValidatorOptions.MessageFormatterFactory().AppendPropertyName(Rule.GetDisplayName());
 			string messageTemplate;
 			try {
-				messageTemplate = Validator.ErrorMessageSource.GetString(null);
+				messageTemplate = Metadata.ErrorMessageSource.GetString(null);
 			}
 			catch (FluentValidationMessageFormatException) {
 				messageTemplate = ValidatorOptions.LanguageManager.GetStringForValidator<NotEmptyValidator>();

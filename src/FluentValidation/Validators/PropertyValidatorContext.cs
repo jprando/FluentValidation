@@ -29,9 +29,9 @@ namespace FluentValidation.Validators {
 
 		public IValidationContext ParentContext { get; }
 		public PropertyRule Rule { get; }
-		public ValidatorMetadata Metadata { get; }
 
-		public string PropertyName => Metadata.PropertyName;
+		public string PropertyName { get; }
+
 		public string DisplayName => Rule.GetDisplayName(this);
 
 		public object InstanceToValidate => ParentContext.InstanceToValidate;
@@ -45,11 +45,10 @@ namespace FluentValidation.Validators {
 		//to allow the delegating validator to cancel validation before value is obtained
 		public object PropertyValue => _propertyValueContainer.Value;
 
-		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, ValidatorMetadata metadata) {
-			metadata.Guard("ValidatorMetadata must be specified", nameof(metadata));
+		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, string propertyName) {
 			ParentContext = parentContext;
 			Rule = rule;
-			Metadata = metadata;
+			PropertyName = propertyName;
 			_propertyValueContainer = new Lazy<object>( () => {
 				var value = rule.PropertyFunc(parentContext.InstanceToValidate);
 				if (rule.Transformer != null) value = rule.Transformer(value);
@@ -57,10 +56,10 @@ namespace FluentValidation.Validators {
 			});
 		}
 
-		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, ValidatorMetadata metadata, object propertyValue) {
+		public PropertyValidatorContext(IValidationContext parentContext, PropertyRule rule, string propertyName, object propertyValue) {
 			ParentContext = parentContext;
 			Rule = rule;
-			Metadata = metadata;
+			PropertyName = propertyName;
 			_propertyValueContainer = new Lazy<object>(() => propertyValue);
 		}
 
