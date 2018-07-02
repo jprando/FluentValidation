@@ -32,6 +32,8 @@ namespace FluentValidation.Internal {
 	/// Rule element for collection validators
 	/// </summary>
 	public class CollectionPropertyRuleItem<T> : PropertyRuleItem {
+		public Func<T, bool> Predicate { get; set; }
+
 		public CollectionPropertyRuleItem(IValidationWorker worker, PropertyRule rule) : base(worker, rule) {
 		}
 
@@ -63,6 +65,9 @@ namespace FluentValidation.Internal {
 			var results = new List<ValidationFailure>();
 
 			IEnumerable<Task> validators = collectionPropertyValue.Select(async (v, count) => {
+				bool skip = Predicate != null && !Predicate(v);
+				if (skip) return;
+				
 				var newContext = ctx.CloneForChildCollectionValidator(context.InstanceToValidate);
 				newContext.PropertyChain.Add(propertyName);
 				newContext.PropertyChain.AddIndexer(count);
@@ -103,6 +108,10 @@ namespace FluentValidation.Internal {
 					}
 
 					foreach (var element in collectionPropertyValue) {
+						
+						bool skip = Predicate != null && !Predicate(element);
+						if (skip) continue;
+
 						var newContext = ctx.CloneForChildCollectionValidator(context.InstanceToValidate);
 						newContext.PropertyChain.Add(propertyName);
 						newContext.PropertyChain.AddIndexer(count++);

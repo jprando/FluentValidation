@@ -163,7 +163,26 @@ namespace FluentValidation.Tests {
 
 		[Fact]
 		public void RuleForEach_works_with_element_filter() {
-			Assert.True(false);
+			var v = new TestValidator();
+			v.RuleForEach(x => x.Children).Where(x => x.Surname != null).Must(x => x.Forename != null);
+
+			var result = v.Validate(new Person {
+				Children = {new Person {Surname = "foo"}, new Person(), new Person {Surname = "bar"}}
+			});
+
+			result.Errors.Count.ShouldEqual(2);
+		}
+
+		[Fact]
+		public async Task RuleForEach_works_with_element_filter_async() {
+			var v = new TestValidator();
+			v.RuleForEach(x => x.Children).Where(x => x.Surname != null).Must(x => x.Forename != null);
+
+			var result = await v.ValidateAsync(new Person {
+				Children = {new Person {Surname = "foo"}, new Person(), new Person {Surname = "bar"}}
+			});
+
+			result.Errors.Count.ShouldEqual(2);
 		}
 
 		

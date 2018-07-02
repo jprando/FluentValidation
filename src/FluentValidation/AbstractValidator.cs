@@ -209,7 +209,7 @@ namespace FluentValidation {
 		/// <typeparam name="TCollectionElement">Type of property</typeparam>
 		/// <param name="expression">Expression representing the collection to validate</param>
 		/// <returns>An IRuleBuilder instance on which validators can be defined</returns>
-		public IRuleBuilderInitial<T, TCollectionElement> RuleForEach<TCollectionElement>(Expression<Func<T, IEnumerable<TCollectionElement>>> expression) {
+		public IRuleBuilderInitialCollection<T, TCollectionElement> RuleForEach<TCollectionElement>(Expression<Func<T, IEnumerable<TCollectionElement>>> expression) {
 			expression.Guard("Cannot pass null to RuleForEach", nameof(expression));
 			var rule = PropertyRule.CreateForCollection(expression, () => CascadeMode);
 			AddRule(rule);

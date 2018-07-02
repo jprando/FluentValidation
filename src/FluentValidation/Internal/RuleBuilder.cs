@@ -26,7 +26,7 @@ namespace FluentValidation.Internal {
 	/// </summary>
 	/// <typeparam name="T">Type of object being validated</typeparam>
 	/// <typeparam name="TProperty">Type of property being validated</typeparam>
-	public class RuleBuilder<T, TProperty> : IRuleBuilderOptions<T, TProperty>, IRuleBuilderInitial<T, TProperty>, IExposesParentValidator<T> {
+	public class RuleBuilder<T, TProperty> : IRuleBuilderOptions<T, TProperty>, IRuleBuilderInitial<T, TProperty>, IRuleBuilderInitialCollection<T,TProperty>, IExposesParentValidator<T> {
 		/// <summary>
 		/// The rule being created by this RuleBuilder.
 		/// </summary>
@@ -84,6 +84,11 @@ namespace FluentValidation.Internal {
 		}
 
 		IRuleBuilderInitial<T, TProperty> IConfigurable<PropertyRule, IRuleBuilderInitial<T, TProperty>>.Configure(Action<PropertyRule> configurator) {
+			configurator(Rule);
+			return this;
+		}
+
+		IRuleBuilderInitialCollection<T, TProperty> IConfigurable<PropertyRule, IRuleBuilderInitialCollection<T, TProperty>>.Configure(Action<PropertyRule> configurator) {
 			configurator(Rule);
 			return this;
 		}

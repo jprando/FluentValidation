@@ -66,4 +66,13 @@ namespace FluentValidation {
 	public interface IRuleBuilderOptions<T, out TProperty> : IRuleBuilder<T, TProperty>, IConfigurable<PropertyRule, IRuleBuilderOptions<T, TProperty>> {
 
 	}
+	
+	/// <summary>
+	/// Rule builder that starts the chain for calls to RuleForEach 
+	/// </summary>
+	/// <typeparam name="T"></typeparam>
+	/// <typeparam name="TElement"></typeparam>
+	public interface IRuleBuilderInitialCollection<T, out TElement> : IRuleBuilder<T, TElement>, IConfigurable<PropertyRule, IRuleBuilderInitialCollection<T, TElement>> {
+	}
+
 }
